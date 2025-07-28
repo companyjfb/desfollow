@@ -30,7 +30,9 @@ const InstagramImage: React.FC<InstagramImageProps> = ({
       
       // Se é uma URL do Instagram, tenta usar o proxy
       if (src.includes('instagram.com') || src.includes('cdninstagram.com')) {
-        const proxyUrl = `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(src)}`;
+        const proxyUrl = window.location.hostname === 'localhost' 
+    ? `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(src)}`
+    : `https://api.desfollow.com.br/api/proxy-image?url=${encodeURIComponent(src)}`;
         console.log('🔄 Tentando proxy:', proxyUrl);
         setImgSrc(proxyUrl);
         setHasError(false);

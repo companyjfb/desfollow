@@ -1,14 +1,18 @@
 // Detecta automaticamente o host correto baseado na origem atual
 const getApiBaseUrl = () => {
   const host = window.location.hostname;
-  const port = '8000'; // Porta do backend
   
   if (host === 'localhost' || host === '127.0.0.1') {
-    return `http://localhost:${port}/api`;
+    return `http://localhost:8000/api`;
   }
   
-  // Para IPs locais, usa o mesmo IP
-  return `http://${host}:${port}/api`;
+  // Para produção, usa a API subdomain
+  if (host === 'desfollow.com.br' || host === 'www.desfollow.com.br') {
+    return `https://api.desfollow.com.br/api`;
+  }
+  
+  // Para outros domínios, tenta usar o mesmo host
+  return `https://${host}/api`;
 };
 
 const API_BASE_URL = getApiBaseUrl();
