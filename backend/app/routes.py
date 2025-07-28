@@ -15,7 +15,38 @@ import os
 from datetime import datetime
 
 router = APIRouter()
-MEM = {}  # cache em memória (trocar por Redis depois)
+
+# Cache compartilhado via arquivo JSON
+CACHE_FILE = "/tmp/desfollow_jobs.json"
+
+def load_jobs():
+    """Carrega jobs do arquivo JSON"""
+    try:
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"❌ Erro ao carregar jobs: {e}")
+    return {}
+
+def save_jobs(jobs):
+    """Salva jobs no arquivo JSON"""
+    try:
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(jobs, f)
+    except Exception as e:
+        print(f"❌ Erro ao salvar jobs: {e}")
+
+def get_job(job_id):
+    """Obtém um job específico"""
+    jobs = load_jobs()
+    return jobs.get(job_id)
+
+def set_job(job_id, data):
+    """Define um job específico"""
+    jobs = load_jobs()
+    jobs[job_id] = data
+    save_jobs(jobs)
 
 
 class ScanRequest(BaseModel):
@@ -57,7 +88,7 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks):
     print(f"🧹 Username limpo: {username}")
     
     job_id = str(uuid4())
-    MEM[job_id] = {"status": "queued"}
+    set_job(job_id, {"status": "queued"})
     
     print(f"📋 Job criado: {job_id}")
     
@@ -73,7 +104,7 @@ async def run_scan(job_id: str, username: str):
     """
     try:
         print(f"🚀 Iniciando scan para job {job_id}: {username}")
-        MEM[job_id] = {"status": "running"}
+        set_job(job_id, {"status": "running"})
         
         # ETAPA 1: Obtém dados do perfil PRIMEIRO e salva IMEDIATAMENTE
         print(f"📱 ETAPA 1: Obtendo dados do perfil para: {username}")
@@ -124,10 +155,10 @@ async def run_scan(job_id: str, username: str):
                             print(f"🚨 ETAPA 1 CONCLUÍDA: Salvando dados do perfil IMEDIATAMENTE!")
                             print(f"📊 Seguidores obtidos: {profile_info.get('followers_count', 0)}")
                             
-                            MEM[job_id] = {
+                            set_job(job_id, {
                                 "status": "running",
                                 "profile_info": profile_info
-                            }
+                            })
                             
                             print(f"✅ Dados do perfil SALVOS no cache!")
                             print(f"🎯 Frontend pode detectar dados AGORA!")
@@ -177,7 +208,7 @@ async def run_scan(job_id: str, username: str):
         print(f"📸 Profile info no resultado: {ghosts.get('profile_info', {})}")
         
         # Atualiza com todos os dados finais
-        current_data = MEM[job_id]
+        current_data = get_job(job_id)
         print(f"📊 Dados atuais no cache: {current_data}")
         
         # Verifica se há dados do perfil no resultado
@@ -204,17 +235,17 @@ async def run_scan(job_id: str, username: str):
         })
         
         print(f"📊 Dados finais no cache: {current_data}")
-        MEM[job_id] = current_data
+        set_job(job_id, current_data)
         
     except Exception as e:
         print(f"❌ Erro no scan {job_id}: {e}")
         # Mantém os dados do perfil mesmo se houver erro no scan completo
-        current_data = MEM.get(job_id, {})
+        current_data = get_job(job_id)
         current_data.update({
             "status": "error",
             "error": str(e)
         })
-        MEM[job_id] = current_data
+        set_job(job_id, current_data)
 
 
 async def run_scan_separated(job_id: str, username: str):
@@ -223,10 +254,10 @@ async def run_scan_separated(job_id: str, username: str):
     """
     try:
         print(f"🚀 Iniciando scan separado para job {job_id}: {username}")
-        MEM[job_id] = {"status": "running"}
+        set_job(job_id, {"status": "running"})
         
         # ETAPA 1: Obtém dados do perfil e salva IMEDIATAMENTE
-        print(f"📱 ETAPA 1: Obtendo dados do perfil...")
+        print(f"�� ETAPA 1: Obtendo dados do perfil...")
         
         user_id = await get_user_id_from_rapidapi(username)
         if not user_id:
@@ -268,10 +299,10 @@ async def run_scan_separated(job_id: str, username: str):
         print(f"🚨 ETAPA 1 CONCLUÍDA: Salvando dados do perfil IMEDIATAMENTE!")
         print(f"📊 Seguidores obtidos: {profile_info.get('followers_count', 0)}")
         
-        MEM[job_id] = {
+        set_job(job_id, {
             "status": "running",
             "profile_info": profile_info
-        }
+        })
         
         print(f"✅ Dados do perfil SALVOS no cache!")
         print(f"🎯 Frontend pode detectar dados AGORA!")
@@ -284,7 +315,7 @@ async def run_scan_separated(job_id: str, username: str):
         ghosts = await get_ghosts_with_profile(username, profile_info, user_id)
         
         # Atualiza com dados finais
-        current_data = MEM[job_id]
+        current_data = get_job(job_id)
         current_data.update({
             "status": "done",
             "count": ghosts["ghosts_count"],
@@ -298,17 +329,17 @@ async def run_scan_separated(job_id: str, username: str):
             "profile_info": profile_info  # Mantém os dados do perfil já salvos
         })
         
-        MEM[job_id] = current_data
+        set_job(job_id, current_data)
         print(f"✅ Scan separado concluído!")
         
     except Exception as e:
         print(f"❌ Erro no scan separado {job_id}: {e}")
-        current_data = MEM.get(job_id, {})
+        current_data = get_job(job_id)
         current_data.update({
             "status": "error",
             "error": str(e)
         })
-        MEM[job_id] = current_data
+        set_job(job_id, current_data)
 
 
 @router.get("/scan/{job_id}", response_model=StatusResponse)
@@ -316,10 +347,10 @@ def status(job_id: str):
     """
     Verifica o status de um scan em andamento.
     """
-    if job_id not in MEM:
-        raise HTTPException(status_code=404, detail="Job não encontrado")
+    job_data = get_job(job_id)
     
-    job_data = MEM[job_id]
+    if not job_data:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
     
     if job_data["status"] == "error":
         return StatusResponse(
@@ -356,7 +387,8 @@ def health_check():
     """
     Endpoint de health check.
     """
-    return {"status": "healthy", "jobs_active": len([j for j in MEM.values() if j["status"] == "running"])}
+    jobs = load_jobs()
+    return {"status": "healthy", "jobs_active": len([j for j in jobs.values() if j["status"] == "running"])}
 
 
 @router.get("/proxy-image")
