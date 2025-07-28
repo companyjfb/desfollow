@@ -55,7 +55,7 @@ pip install fastapi uvicorn gunicorn psycopg2-binary sqlalchemy python-dotenv py
 log "📝 Configurando variáveis de ambiente..."
 cat > backend/.env << 'EOF'
 # Configurações do Banco de Dados (Supabase)
-DATABASE_URL=postgresql://postgres:Desfollow-DB2026###@db.xxx.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:Desfollow-DB2026###@czojjbhgslgbthxzbmyc.supabase.co:5432/postgres
 
 # Configurações da API
 RAPIDAPI_KEY=dcbcbd1a45msh9db02af0ee3b5b2p1f2f71jsne81868330f01
