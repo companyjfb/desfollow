@@ -66,4 +66,11 @@ async def root():
         "message": "Desfollow API",
         "version": "1.0.0",
         "docs": "/docs"
-    } 
+    }
+
+@app.get("/health")
+async def health_check():
+    """
+    Endpoint de health check.
+    """
+    return {"status": "healthy"} 
