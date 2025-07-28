@@ -42,7 +42,7 @@ mkdir -p /root/desfollow
 cd /root/desfollow
 
 # Se você tem o código em um repositório, clone aqui
-# git clone https://github.com/seu-usuario/desfollow.git .
+git clone https://github.com/companyjfb/desfollow.git .
 
 # Por enquanto, vamos criar a estrutura básica
 mkdir -p backend/app
