@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Frontend</title>
+</head>
+<body>
+    <h1>Teste Frontend</h1>
+    <p>Verifique se o frontend está rodando em: <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></p>
+    
+    <h2>Teste Backend</h2>
+    <p>Verifique se o backend está rodando em: <a href="http://localhost:8000/api/health" target="_blank">http://localhost:8000/api/health</a></p>
+    
+    <h2>Teste Scan</h2>
+    <p>Teste um scan direto: <a href="http://localhost:5173/analyzing/jordanbitencourt" target="_blank">http://localhost:5173/analyzing/jordanbitencourt</a></p>
+    
+    <script>
+        // Testa se o frontend está rodando
+        fetch('http://localhost:5173')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Frontend está rodando');
+                    document.body.innerHTML += '<p style="color: green;">✅ Frontend está rodando</p>';
+                } else {
+                    console.log('❌ Frontend não está respondendo corretamente');
+                    document.body.innerHTML += '<p style="color: red;">❌ Frontend não está respondendo corretamente</p>';
+                }
+            })
+            .catch(error => {
+                console.log('❌ Erro ao conectar com frontend:', error);
+                document.body.innerHTML += '<p style="color: red;">❌ Erro ao conectar com frontend</p>';
+            });
+        
+        // Testa se o backend está rodando
+        fetch('http://localhost:8000/api/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Backend está rodando:', data);
+                document.body.innerHTML += '<p style="color: green;">✅ Backend está rodando</p>';
+            })
+            .catch(error => {
+                console.log('❌ Erro ao conectar com backend:', error);
+                document.body.innerHTML += '<p style="color: red;">❌ Erro ao conectar com backend</p>';
+            });
+    </script>
+</body>
+</html> 
