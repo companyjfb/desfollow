@@ -1,141 +1,119 @@
 #!/bin/bash
 
-echo "🔧 Corrigindo Nginx para servir frontend..."
-echo "==========================================="
+echo "🔧 Corrigindo configuração do Nginx..."
+echo "====================================="
 
-echo "📋 Configuração atual do Nginx:"
-cat /etc/nginx/sites-available/default
+echo "📋 Verificando configuração atual..."
+nginx -t
 
 echo ""
-echo "🔧 Criando nova configuração..."
+echo "🔧 Aplicando nova configuração..."
 
 # Fazer backup da configuração atual
-cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.backup
+cp /etc/nginx/sites-available/desfollow /etc/nginx/sites-available/desfollow.backup.$(date +%Y%m%d_%H%M%S)
 
-# Criar nova configuração
-cat > /etc/nginx/sites-available/default << 'EOF'
-# Configuração para desfollow.com.br e www.desfollow.com.br (Frontend)
-server {
-    listen 80;
-    server_name desfollow.com.br www.desfollow.com.br;
-    
-    root /var/www/html;
-    index index.html index.htm;
-    
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # Configurações de cache para arquivos estáticos
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
+# Aplicar nova configuração
+cp nginx_desfollow_complete.conf /etc/nginx/sites-available/desfollow
 
-# Configuração para api.desfollow.com.br (Backend)
-server {
-    listen 80;
-    server_name api.desfollow.com.br;
-    
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# Configuração HTTPS para api.desfollow.com.br
-server {
-    listen 443 ssl;
-    server_name api.desfollow.com.br;
-    
-    ssl_certificate /etc/letsencrypt/live/api.desfollow.com.br/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.desfollow.com.br/privkey.pem;
-    
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-echo "✅ Nova configuração criada!"
+echo "✅ Nova configuração aplicada!"
 
 echo ""
-echo "🔧 Testando configuração do Nginx:"
+echo "🔍 Verificando sintaxe da nova configuração..."
 nginx -t
 
 if [ $? -eq 0 ]; then
-    echo "✅ Configuração válida!"
+    echo "✅ Sintaxe da configuração está correta!"
     
     echo ""
-    echo "🔧 Copiando frontend para /var/www/html..."
+    echo "🔧 Verificando se o diretório do frontend existe..."
+    if [ ! -d "/var/www/desfollow" ]; then
+        echo "❌ Diretório /var/www/desfollow não existe!"
+        echo "🔧 Criando diretório..."
+        mkdir -p /var/www/desfollow
+        chown www-data:www-data /var/www/desfollow
+        echo "✅ Diretório criado!"
+    else
+        echo "✅ Diretório /var/www/desfollow existe!"
+    fi
     
-    # Criar diretório se não existir
-    mkdir -p /var/www/html
-    
-    # Copiar arquivos do frontend
-    cp -r /root/desfollow/dist/* /var/www/html/ 2>/dev/null || {
-        echo "❌ Diretório dist não encontrado, copiando arquivos do build..."
-        cp -r /root/desfollow/build/* /var/www/html/ 2>/dev/null || {
-            echo "❌ Diretório build não encontrado, criando index.html básico..."
-            cat > /var/www/html/index.html << 'HTML'
+    echo ""
+    echo "🔧 Verificando se os arquivos do frontend estão no lugar..."
+    if [ ! -f "/var/www/desfollow/index.html" ]; then
+        echo "❌ Arquivo index.html não encontrado em /var/www/desfollow!"
+        echo "🔧 Copiando arquivos do frontend..."
+        
+        # Verificar se existe build do frontend
+        if [ -d "dist" ]; then
+            cp -r dist/* /var/www/desfollow/
+            chown -R www-data:www-data /var/www/desfollow
+            echo "✅ Arquivos do frontend copiados!"
+        else
+            echo "⚠️ Diretório 'dist' não encontrado. Criando index.html básico..."
+            cat > /var/www/desfollow/index.html << 'EOF'
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Desfollow - Em Manutenção</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desfollow - Encontre quem não retribui seus follows</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
         .container { max-width: 600px; margin: 0 auto; }
-        .status { color: #666; margin: 20px 0; }
+        h1 { color: #333; }
+        p { color: #666; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Desfollow</h1>
-        <p class="status">Frontend em configuração...</p>
-        <p>API está funcionando em: <a href="https://api.desfollow.com.br">api.desfollow.com.br</a></p>
+        <h1>🚧 Em Manutenção</h1>
+        <p>O Desfollow está sendo configurado. Volte em alguns minutos!</p>
+        <p>API: <a href="https://api.desfollow.com.br">api.desfollow.com.br</a></p>
     </div>
 </body>
 </html>
-HTML
-        }
-    }
-    
-    echo "✅ Frontend copiado!"
-    
-    echo ""
-    echo "🔧 Definindo permissões..."
-    chown -R www-data:www-data /var/www/html
-    chmod -R 755 /var/www/html
+EOF
+            chown www-data:www-data /var/www/desfollow/index.html
+            echo "✅ index.html básico criado!"
+        fi
+    else
+        echo "✅ Arquivo index.html encontrado!"
+    fi
     
     echo ""
     echo "🔧 Recarregando Nginx..."
     systemctl reload nginx
     
-    echo ""
-    echo "📊 Status do Nginx:"
-    systemctl status nginx --no-pager
-    
-    echo ""
-    echo "🔍 Testando frontend:"
-    curl -I http://localhost/
-    
-    echo ""
-    echo "🔍 Testando API:"
-    curl -I http://localhost:8000/api/health
+    if [ $? -eq 0 ]; then
+        echo "✅ Nginx recarregado com sucesso!"
+        
+        echo ""
+        echo "🔍 Testando configuração..."
+        echo "📱 Frontend (www.desfollow.com.br):"
+        curl -I http://www.desfollow.com.br 2>/dev/null | head -5
+        
+        echo ""
+        echo "🔧 API (api.desfollow.com.br):"
+        curl -I http://api.desfollow.com.br 2>/dev/null | head -5
+        
+        echo ""
+        echo "✅ Configuração corrigida com sucesso!"
+        echo ""
+        echo "📋 Resumo:"
+        echo "   - Frontend: https://www.desfollow.com.br"
+        echo "   - API: https://api.desfollow.com.br"
+        echo "   - Logs: /var/log/nginx/desfollow_*_access.log"
+        
+    else
+        echo "❌ Erro ao recarregar Nginx!"
+        echo "🔧 Restaurando configuração anterior..."
+        cp /etc/nginx/sites-available/desfollow.backup.* /etc/nginx/sites-available/desfollow
+        systemctl reload nginx
+        echo "✅ Configuração anterior restaurada!"
+    fi
     
 else
-    echo "❌ Configuração inválida! Restaurando backup..."
-    cp /etc/nginx/sites-available/default.backup /etc/nginx/sites-available/default
-fi
-
-echo ""
-echo "✅ Correção do Nginx concluída!" 
+    echo "❌ Erro na sintaxe da configuração!"
+    echo "🔧 Restaurando configuração anterior..."
+    cp /etc/nginx/sites-available/desfollow.backup.* /etc/nginx/sites-available/desfollow
+    echo "✅ Configuração anterior restaurada!"
+fi 
