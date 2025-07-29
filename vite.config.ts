@@ -1,39 +1,23 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  build: {
-    outDir: "dist",
-    sourcemap: mode === "development",
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          router: ["react-router-dom"],
-          ui: ["lucide-react", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu"],
-        },
-      },
-    },
-  },
-  plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
+export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Desabilita Service Worker em desenvolvimento
-  define: {
-    __VUE_PROD_DEVTOOLS__: false,
+  // Configuração para produção
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
   },
-}));
+  // Configuração do servidor apenas para desenvolvimento local
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+  },
+})

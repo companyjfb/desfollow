@@ -2,12 +2,13 @@
 const getApiBaseUrl = () => {
   const host = window.location.hostname;
   
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return `http://localhost:8000/api`;
-  }
-  
   // Para produção, usa a API subdomain
   if (host === 'desfollow.com.br' || host === 'www.desfollow.com.br') {
+    return `https://api.desfollow.com.br/api`;
+  }
+  
+  // Para api.desfollow.com.br, usa o mesmo host
+  if (host === 'api.desfollow.com.br') {
     return `https://api.desfollow.com.br/api`;
   }
   

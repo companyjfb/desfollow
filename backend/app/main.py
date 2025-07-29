@@ -19,19 +19,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuração CORS mais permissiva
+# Configuração CORS apenas para domínios de produção
 allowed_origins = [
-    "http://localhost:3000", 
-    "http://127.0.0.1:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-    "http://10.102.37.150:8081",
-    "http://10.102.37.150:3000",
-    "http://192.168.0.187:8080",
-    "http://192.168.0.187:3000",
-    "http://192.168.0.187:8081",
     # Domínios de produção
     "https://desfollow.com.br",
     "https://www.desfollow.com.br",
@@ -39,8 +28,6 @@ allowed_origins = [
     "http://www.desfollow.com.br",
     "https://api.desfollow.com.br",
     "http://api.desfollow.com.br",
-    # Adicionar wildcard para desenvolvimento
-    "*"
 ]
 
 # Adiciona domínios de produção se configurados
