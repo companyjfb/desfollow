@@ -39,6 +39,7 @@ class Scan(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     username = Column(String(255), nullable=False, index=True)
+    target_username = Column(String(255), nullable=True)  # Para compatibilidade com o banco
     job_id = Column(String(255), unique=True, nullable=False, index=True)
     status = Column(String(50), nullable=False)  # queued, running, done, error
     followers_count = Column(Integer, default=0)
