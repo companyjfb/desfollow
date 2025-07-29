@@ -59,8 +59,8 @@ class ScanResponse(BaseModel):
 class StatusResponse(BaseModel):
     status: str
     count: Optional[int] = None
-    sample: Optional[List[str]] = None
-    all: Optional[List[str]] = None
+    sample: Optional[List[Dict[str, Any]]] = None
+    all: Optional[List[Dict[str, Any]]] = None
     ghosts_details: Optional[List[Dict[str, Any]]] = None
     real_ghosts: Optional[List[Dict[str, Any]]] = None
     famous_ghosts: Optional[List[Dict[str, Any]]] = None
