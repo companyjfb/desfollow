@@ -125,21 +125,16 @@ server {
 
     # API Proxy - CRUCIAL para evitar CORS
     location /api/ {
+        # Preflight requests - DEVE vir antes dos headers
+        if ($request_method = 'OPTIONS') {
+            return 204;
+        }
+
         # Headers CORS essenciais
         add_header Access-Control-Allow-Origin "*" always;
         add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
         add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
-        
-        # Preflight requests
-        if ($request_method = 'OPTIONS') {
-            add_header Access-Control-Allow-Origin "*" always;
-            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-            add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
-            add_header Access-Control-Max-Age 1728000;
-            add_header Content-Type "text/plain charset=UTF-8";
-            add_header Content-Length 0;
-            return 204;
-        }
+        add_header Access-Control-Max-Age 1728000 always;
 
         # Proxy para API local (HTTP interno)
         proxy_pass http://127.0.0.1:8000/api/;
@@ -192,12 +187,6 @@ server {
 
     # Preflight requests para API
     if ($request_method = 'OPTIONS') {
-        add_header Access-Control-Allow-Origin "*" always;
-        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
-        add_header Access-Control-Max-Age 1728000;
-        add_header Content-Type "text/plain charset=UTF-8";
-        add_header Content-Length 0;
         return 204;
     }
 
