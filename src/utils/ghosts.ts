@@ -1,19 +1,19 @@
-// Sempre usa HTTP para a API, independente do protocolo da página
+// Usa HTTPS para a API quando disponível, fallback para HTTP
 const getApiBaseUrl = () => {
   const host = window.location.hostname;
   
-  // Para produção, sempre usa HTTP para a API
+  // Para produção, tenta HTTPS primeiro, depois HTTP
   if (host === 'desfollow.com.br' || host === 'www.desfollow.com.br') {
-    return `http://api.desfollow.com.br/api`;
+    return `https://api.desfollow.com.br/api`;
   }
   
-  // Para api.desfollow.com.br, usa HTTP
+  // Para api.desfollow.com.br, usa HTTPS
   if (host === 'api.desfollow.com.br') {
-    return `http://api.desfollow.com.br/api`;
+    return `https://api.desfollow.com.br/api`;
   }
   
-  // Para outros domínios, usa HTTP
-  return `http://${host}/api`;
+  // Para outros domínios, tenta HTTPS
+  return `https://${host}/api`;
 };
 
 const API_BASE_URL = getApiBaseUrl();
