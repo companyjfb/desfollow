@@ -13,7 +13,11 @@ NC='\033[0m' # No Color
 # Função para verificar jobs
 check_api() {
     local jobs=$(curl -s http://api.desfollow.com.br/api/health 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('jobs_active', 'erro'))" 2>/dev/null)
-    echo "$jobs"
+    if [ -z "$jobs" ]; then
+        echo "erro"
+    else
+        echo "$jobs"
+    fi
 }
 
 echo "📊 1. Status do Serviço:"
@@ -31,8 +35,9 @@ fi
 echo ""
 echo "📊 2. Jobs Ativos na API:"
 JOBS=$(check_api)
-if [ "$JOBS" = "erro" ]; then
+if [ "$JOBS" = "erro" ] || [ -z "$JOBS" ]; then
     echo -e "   ${RED}❌ Erro ao conectar com API${NC}"
+    JOBS="erro"
 else
     if [ "$JOBS" -le 5 ]; then
         echo -e "   ${GREEN}✅ Jobs ativos: $JOBS (ÓTIMO)${NC}"
@@ -74,7 +79,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Resumo geral
-if systemctl is-active --quiet desfollow-limpeza-3min && [ "$JOBS" != "erro" ] && [ "$JOBS" -le 5 ]; then
+if systemctl is-active --quiet desfollow-limpeza-3min && [ "$JOBS" != "erro" ] && [ -n "$JOBS" ] && [ "$JOBS" -le 5 ]; then
     echo -e "🎯 ${GREEN}SISTEMA FUNCIONANDO PERFEITAMENTE!${NC}"
 elif systemctl is-active --quiet desfollow-limpeza-3min; then
     echo -e "⚠️ ${YELLOW}Sistema ativo, mas pode precisar de otimização${NC}"
