@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 import asyncio
 import requests
 import os
+import time
 from fastapi.responses import StreamingResponse
 
 router = APIRouter()
@@ -199,7 +200,7 @@ async def get_profile_info(username: str) -> dict:
 @router.get("/scan/{job_id}", response_model=StatusResponse)
 def status(job_id: str, db: Session = Depends(get_db)):
     """
-    Verifica o status de um scan em andamento.
+    Verifica o status de um scan em andamento com retry automático.
     """
     # Primeiro verificar no banco de dados
     scan = db.query(Scan).filter(Scan.job_id == job_id).first()
@@ -237,7 +238,17 @@ def status(job_id: str, db: Session = Depends(get_db)):
     job_data = get_job(job_id)
     
     if not job_data:
-        raise HTTPException(status_code=404, detail="Job não encontrado")
+        # Retry automático: aguardar um pouco e tentar novamente
+        time.sleep(0.5)
+        job_data = get_job(job_id)
+        
+        if not job_data:
+            # Segundo retry
+            time.sleep(1)
+            job_data = get_job(job_id)
+            
+            if not job_data:
+                raise HTTPException(status_code=404, detail="Job não encontrado")
     
     if job_data["status"] == "error":
         return StatusResponse(

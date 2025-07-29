@@ -122,7 +122,8 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     """
     Obtém ghosts com dados do perfil e classificação melhorada.
     """
-    print(f"🚀 Iniciando análise para: {username} (com dados do perfil pré-obtidos)")
+    print(f"🚀 Iniciando análise para: {username}")
+    print(f"📊 Dados do perfil: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
     
     # Usar user_id se fornecido, senão obter via API
     if not user_id:
@@ -140,17 +141,27 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
             "error": "Não foi possível obter user_id"
         }
     
-    print(f"✅ Usando user_id já obtido: {user_id}")
+    print(f"✅ User ID obtido: {user_id}")
     
     # Obter seguidores e seguindo com paginação otimizada
+    print(f"📱 Iniciando busca de seguidores...")
     followers = await get_followers_optimized(user_id, db_session)
+    
+    print(f"📱 Iniciando busca de seguindo...")
     following = await get_following_optimized(user_id, db_session)
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
     followers_usernames = {user['username'] for user in followers}
     
+    print(f"🔍 Analisando ghosts...")
+    print(f"   - Seguindo: {len(following)} usuários")
+    print(f"   - Seguidores: {len(followers)} usuários")
+    
     ghosts = []
+    real_ghosts = []
+    famous_ghosts = []
+    
     for user in following:
         if user['username'] not in followers_usernames:
             # Classificar o ghost
@@ -162,10 +173,16 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
             
             user['ghost_type'] = ghost_type
             ghosts.append(user)
+            
+            if ghost_type == 'real':
+                real_ghosts.append(user)
+            else:
+                famous_ghosts.append(user)
     
-    # Separar ghosts por tipo
-    real_ghosts = [g for g in ghosts if g['ghost_type'] == 'real']
-    famous_ghosts = [g for g in ghosts if g['ghost_type'] == 'famous']
+    print(f"🎯 Análise concluída!")
+    print(f"   - Ghosts totais: {len(ghosts)}")
+    print(f"   - Ghosts reais: {len(real_ghosts)}")
+    print(f"   - Ghosts famosos: {len(famous_ghosts)}")
     
     return {
         "ghosts": ghosts,
@@ -182,12 +199,13 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
     """
     Obtém lista de seguidores com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"🔄 Obtendo seguidores com paginação otimizada para user_id: {user_id}...")
+    print(f"📱 Buscando seguidores (5 páginas de 25 usuários)...")
     
     all_followers = []
     max_id = None
     page = 1
     max_pages = 5  # Limite de 5 páginas
+    total_new_users = 0
     
     while page <= max_pages:
         print(f"📄 Página {page}/{max_pages} de seguidores...")
@@ -217,6 +235,8 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 # Processar usuários e salvar no banco
                 new_users = []
+                page_new_users = 0
+                
                 for user in users:
                     username = user.get('username')
                     if username and not any(f['username'] == username for f in all_followers):
@@ -234,11 +254,14 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                                 'following_count': user.get('edge_follow', {}).get('count', 0),
                                 'posts_count': user.get('edge_owner_to_timeline_media', {}).get('count', 0)
                             })
+                            page_new_users += 1
                         
                         new_users.append(user)
                 
                 all_followers.extend(new_users)
-                print(f"✅ Página {page}: {len(new_users)} seguidores NOVOS encontrados")
+                total_new_users += page_new_users
+                
+                print(f"✅ Página {page}: {len(new_users)} seguidores encontrados ({page_new_users} novos no banco)")
                 
                 # Verificar se há mais páginas
                 if 'next_max_id' in data and data['next_max_id']:
@@ -256,19 +279,20 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
             print(f"❌ Erro ao obter seguidores na página {page}: {e}")
             break
     
-    print(f"🎯 Total de seguidores únicos encontrados: {len(all_followers)}")
+    print(f"🎯 Total de seguidores: {len(all_followers)} ({total_new_users} novos salvos no banco)")
     return all_followers
 
 async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
     Obtém lista de seguindo com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"🔄 Obtendo seguindo com paginação otimizada para user_id: {user_id}...")
+    print(f"📱 Buscando seguindo (5 páginas de 25 usuários)...")
     
     all_following = []
     max_id = None
     page = 1
     max_pages = 5  # Limite de 5 páginas
+    total_new_users = 0
     
     while page <= max_pages:
         print(f"📄 Página {page}/{max_pages} de seguindo...")
@@ -298,6 +322,8 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 # Processar usuários e salvar no banco
                 new_users = []
+                page_new_users = 0
+                
                 for user in users:
                     username = user.get('username')
                     if username and not any(f['username'] == username for f in all_following):
@@ -315,11 +341,14 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                                 'following_count': user.get('edge_follow', {}).get('count', 0),
                                 'posts_count': user.get('edge_owner_to_timeline_media', {}).get('count', 0)
                             })
+                            page_new_users += 1
                         
                         new_users.append(user)
                 
                 all_following.extend(new_users)
-                print(f"✅ Página {page}: {len(new_users)} seguindo NOVOS encontrados")
+                total_new_users += page_new_users
+                
+                print(f"✅ Página {page}: {len(new_users)} seguindo encontrados ({page_new_users} novos no banco)")
                 
                 # Verificar se há mais páginas
                 if 'next_max_id' in data and data['next_max_id']:
@@ -337,7 +366,7 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
             print(f"❌ Erro ao obter seguindo na página {page}: {e}")
             break
     
-    print(f"🎯 Total de seguindo únicos encontrados: {len(all_following)}")
+    print(f"🎯 Total de seguindo: {len(all_following)} ({total_new_users} novos salvos no banco)")
     return all_following
 
 async def get_followers(user_id: str) -> List[Dict]:
