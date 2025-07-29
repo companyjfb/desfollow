@@ -121,7 +121,7 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             profile_info = cached_data['profile_info']
         else:
             print(f"📱 Obtendo dados do perfil para: {username}")
-            profile_info = await get_profile_info(username)
+            profile_info = get_profile_info(username)
         
         if profile_info:
             # Salvar/atualizar usuário no banco
@@ -159,7 +159,7 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
         print(f"❌ Erro no scan {job_id}: {e}")
         save_scan_result(db, job_id, username, "error", error_message=str(e))
 
-async def get_profile_info(username: str) -> dict:
+def get_profile_info(username: str) -> dict:
     """
     Obtém informações do perfil via RapidAPI.
     """
