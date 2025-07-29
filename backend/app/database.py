@@ -15,7 +15,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(255), unique=True, index=True, nullable=False)
     full_name = Column(String(255))
-    email = Column(String(255), unique=True)
+    email = Column(String(255), unique=True, nullable=True)
     profile_pic_url = Column(Text)
     profile_pic_url_hd = Column(Text)
     biography = Column(Text)
@@ -108,8 +108,12 @@ def get_or_create_user(db, username, profile_info=None):
     user = db.query(User).filter(User.username == username).first()
     
     if not user:
+        # Gerar email padrão baseado no username se não fornecido
+        default_email = f"{username}@desfollow.com.br"
+        
         user = User(
             username=username,
+            email=default_email,  # Email padrão para evitar constraint NOT NULL
             full_name=profile_info.get('full_name') if profile_info else None,
             profile_pic_url=profile_info.get('profile_pic_url') if profile_info else None,
             profile_pic_url_hd=profile_info.get('profile_pic_url_hd') if profile_info else None,
