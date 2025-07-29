@@ -244,9 +244,15 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
             
             if response.status_code == 200:
                 data = response.json()
-                users = data.get('users', [])
                 
-                print(f"📋 Response data: {data}")
+                # API retorna lista direta, não dict com 'users'
+                if isinstance(data, list):
+                    users = data
+                    print(f"📋 Response: lista com {len(users)} usuários")
+                else:
+                    # Fallback para estrutura dict (caso mude no futuro)
+                    users = data.get('users', [])
+                    print(f"📋 Response data: {data}")
                 
                 if not users:
                     print(f"📭 Nenhum usuário encontrado na página {page}")
@@ -290,8 +296,13 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 # Para próxima página, usar o último ID da lista atual
                 if users:
                     last_user = users[-1]
-                    max_id = last_user.get('id') or last_user.get('pk')
+                    # A API retorna 'pk' e 'id' como campos principais
+                    max_id = last_user.get('pk') or last_user.get('id')
                     print(f"🔑 Próximo max_id: {max_id}")
+                    
+                    if not max_id:
+                        print(f"⚠️ Nenhum ID encontrado no último usuário: {last_user}")
+                        break
                 else:
                     print(f"📄 Nenhum usuário para continuar paginação")
                     break
@@ -346,9 +357,15 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
             
             if response.status_code == 200:
                 data = response.json()
-                users = data.get('users', [])
                 
-                print(f"📋 Response data: {data}")
+                # API retorna lista direta, não dict com 'users'
+                if isinstance(data, list):
+                    users = data
+                    print(f"📋 Response: lista com {len(users)} usuários")
+                else:
+                    # Fallback para estrutura dict (caso mude no futuro)
+                    users = data.get('users', [])
+                    print(f"📋 Response data: {data}")
                 
                 if not users:
                     print(f"📭 Nenhum usuário encontrado na página {page}")
@@ -392,8 +409,13 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 # Para próxima página, usar o último ID da lista atual
                 if users:
                     last_user = users[-1]
-                    max_id = last_user.get('id') or last_user.get('pk')
+                    # A API retorna 'pk' e 'id' como campos principais
+                    max_id = last_user.get('pk') or last_user.get('id')
                     print(f"🔑 Próximo max_id: {max_id}")
+                    
+                    if not max_id:
+                        print(f"⚠️ Nenhum ID encontrado no último usuário: {last_user}")
+                        break
                 else:
                     print(f"📄 Nenhum usuário para continuar paginação")
                     break
