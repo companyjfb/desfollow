@@ -56,12 +56,16 @@ app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
 # Criar tabelas na inicialização
 @app.on_event("startup")
 async def startup_event():
+    """Evento executado na inicialização da aplicação"""
     try:
-        logger.info("Iniciando aplicação...")
+        logger.info("🚀 Iniciando aplicação...")
+        logger.info("📊 Criando/verificando tabelas no Supabase...")
         create_tables()
-        logger.info("Tabelas criadas com sucesso!")
+        logger.info("✅ Tabelas verificadas/criadas no Supabase!")
+        logger.info("🎯 Aplicação pronta para receber requisições!")
     except Exception as e:
-        logger.error(f"Erro ao criar tabelas: {e}")
+        logger.error(f"❌ Erro na inicialização: {e}")
+        raise
 
 @app.get("/")
 async def root():

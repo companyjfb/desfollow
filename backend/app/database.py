@@ -1,11 +1,16 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, ForeignKey, Boolean, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, ForeignKey, Boolean, Float, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -89,7 +94,30 @@ class Payment(Base):
 
 # Configuração do banco
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+
+if not DATABASE_URL:
+    logger.error("❌ DATABASE_URL não encontrado no arquivo .env")
+    raise ValueError("DATABASE_URL é obrigatório para conectar ao Supabase")
+
+logger.info(f"🔗 Conectando ao Supabase: {DATABASE_URL[:50]}...")
+
+try:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,  # Verifica conexão antes de usar
+        pool_recycle=3600,   # Reconecta a cada hora
+        echo=False           # Set to True for SQL debugging
+    )
+    # Testar conexão imediatamente
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    logger.info("✅ Conexão com Supabase estabelecida com sucesso!")
+    
+except Exception as e:
+    logger.error(f"❌ Erro ao conectar com Supabase: {e}")
+    logger.error(f"❌ Verifique: 1) DATABASE_URL no .env, 2) psycopg2-binary instalado, 3) Conectividade de rede")
+    raise
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def create_tables():
