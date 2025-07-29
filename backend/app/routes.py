@@ -112,7 +112,14 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
     """
     try:
         print(f"🚀 Iniciando scan com banco para job {job_id}: {username}")
-        set_job(job_id, {"status": "running"})
+        
+        # Adicionar start_time para rastrear jobs órfãos
+        import time
+        set_job(job_id, {
+            "status": "running",
+            "start_time": time.time(),
+            "username": username
+        })
         
         # Verificar cache do usuário
         cached_data = get_cached_user_data(db, username)
@@ -366,7 +373,25 @@ def health_check():
     Endpoint de health check.
     """
     jobs = load_jobs()
-    return {"status": "healthy", "jobs_active": len([j for j in jobs.values() if j["status"] == "running"])}
+    
+    # Contar apenas jobs realmente ativos (running) e não órfãos
+    active_jobs = 0
+    for job_id, job_data in jobs.items():
+        if job_data.get("status") == "running":
+            # Verificar se o job não é órfão (mais de 30 minutos)
+            if "start_time" in job_data:
+                import time
+                if time.time() - job_data["start_time"] < 1800:  # 30 minutos
+                    active_jobs += 1
+            else:
+                # Se não tem start_time, considerar órfão
+                job_data["status"] = "error"
+                job_data["error"] = "Job órfão - sem start_time"
+    
+    # Salvar jobs limpos
+    save_jobs(jobs)
+    
+    return {"status": "healthy", "jobs_active": active_jobs}
 
 @router.get("/proxy-image")
 async def proxy_image(url: str):
