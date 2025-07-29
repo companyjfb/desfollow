@@ -282,11 +282,19 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguidores encontrados ({page_new_users} novos no banco)")
                 
-                # Incrementar max_id para próxima página (25 em 25)
-                if page == 1:
-                    max_id = 25
+                # Verificar se há mais páginas (se retornou menos de 25 usuários, é a última)
+                if len(users) < 25:
+                    print(f"📄 Última página alcançada (menos de 25 usuários)")
+                    break
+                
+                # Para próxima página, usar o último ID da lista atual
+                if users:
+                    last_user = users[-1]
+                    max_id = last_user.get('id') or last_user.get('pk')
+                    print(f"🔑 Próximo max_id: {max_id}")
                 else:
-                    max_id = max_id + 25
+                    print(f"📄 Nenhum usuário para continuar paginação")
+                    break
                 
                 page += 1
                 await asyncio.sleep(1)  # Rate limiting
@@ -376,11 +384,19 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguindo encontrados ({page_new_users} novos no banco)")
                 
-                # Incrementar max_id para próxima página (25 em 25)
-                if page == 1:
-                    max_id = 25
+                # Verificar se há mais páginas (se retornou menos de 25 usuários, é a última)
+                if len(users) < 25:
+                    print(f"📄 Última página alcançada (menos de 25 usuários)")
+                    break
+                
+                # Para próxima página, usar o último ID da lista atual
+                if users:
+                    last_user = users[-1]
+                    max_id = last_user.get('id') or last_user.get('pk')
+                    print(f"🔑 Próximo max_id: {max_id}")
                 else:
-                    max_id = max_id + 25
+                    print(f"📄 Nenhum usuário para continuar paginação")
+                    break
                 
                 page += 1
                 await asyncio.sleep(1)  # Rate limiting
