@@ -31,23 +31,23 @@ print(f'DATABASE_URL: {DATABASE_URL}')
 try:
     conn = psycopg2.connect(DATABASE_URL)
     print('✅ Conexão com Supabase OK!')
-    
+
     # Testar se as tabelas existem
     cursor = conn.cursor()
     cursor.execute(\"\"\"
-        SELECT table_name 
-        FROM information_schema.tables 
+        SELECT table_name
+        FROM information_schema.tables
         WHERE table_schema = 'public'
     \"\"\")
-    
+
     tables = cursor.fetchall()
     print(f'📊 Tabelas encontradas: {len(tables)}')
     for table in tables:
         print(f'  - {table[0]}')
-    
+
     cursor.close()
     conn.close()
-    
+
 except Exception as e:
     print(f'❌ Erro na conexão: {e}')
 "
@@ -68,19 +68,28 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 try:
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    
-    # Criar tabela users
+
+    # Criar tabela users (estrutura expandida)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(255) UNIQUE NOT NULL,
+            full_name VARCHAR(255),
             email VARCHAR(255) UNIQUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            profile_pic_url TEXT,
+            profile_pic_url_hd TEXT,
+            biography TEXT,
+            is_private BOOLEAN DEFAULT FALSE,
+            is_verified BOOLEAN DEFAULT FALSE,
+            followers_count INTEGER DEFAULT 0,
+            following_count INTEGER DEFAULT 0,
+            posts_count INTEGER DEFAULT 0,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Criar tabela scans
+
+    # Criar tabela scans (estrutura expandida)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS scans (
             id SERIAL PRIMARY KEY,
@@ -88,18 +97,36 @@ try:
             username VARCHAR(255) NOT NULL,
             job_id VARCHAR(255) UNIQUE NOT NULL,
             status VARCHAR(50) NOT NULL,
-            followers_count INTEGER,
-            following_count INTEGER,
-            ghosts_count INTEGER,
-            real_ghosts_count INTEGER,
-            famous_ghosts_count INTEGER,
+            followers_count INTEGER DEFAULT 0,
+            following_count INTEGER DEFAULT 0,
+            ghosts_count INTEGER DEFAULT 0,
+            real_ghosts_count INTEGER DEFAULT 0,
+            famous_ghosts_count INTEGER DEFAULT 0,
             profile_info JSONB,
             ghosts_data JSONB,
+            real_ghosts JSONB,
+            famous_ghosts JSONB,
+            error_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
+    # Criar tabela user_followers (nova tabela)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_followers (
+            id SERIAL PRIMARY KEY,
+            follower_id INTEGER REFERENCES users(id) NOT NULL,
+            following_id INTEGER REFERENCES users(id) NOT NULL,
+            is_following_back BOOLEAN DEFAULT FALSE,
+            is_ghost BOOLEAN DEFAULT FALSE,
+            ghost_type VARCHAR(50),
+            last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(follower_id, following_id)
+        )
+    ''')
+
     # Criar tabela payments
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payments (
@@ -114,18 +141,23 @@ try:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Criar índices
+
+    # Criar índices para performance
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_job_id ON scans(job_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_username ON scans(username)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_followers_follower ON user_followers(follower_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_followers_following ON user_followers(following_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id)')
-    
+
     conn.commit()
     cursor.close()
     conn.close()
-    
+
     print('✅ Tabelas criadas com sucesso!')
-    
+
 except Exception as e:
     print(f'❌ Erro ao criar tabelas: {e}')
 "

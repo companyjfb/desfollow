@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, ForeignKey, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -7,69 +7,195 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuração do banco de dados
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./desfollow.db")
-
-# Para desenvolvimento local, usa SQLite
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Modelos do banco de dados
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    is_active = Column(Boolean, default=True)
-    is_premium = Column(Boolean, default=False)
+    username = Column(String(255), unique=True, index=True, nullable=False)
+    full_name = Column(String(255))
+    email = Column(String(255), unique=True)
+    profile_pic_url = Column(Text)
+    profile_pic_url_hd = Column(Text)
+    biography = Column(Text)
+    is_private = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)
+    followers_count = Column(Integer, default=0)
+    following_count = Column(Integer, default=0)
+    posts_count = Column(Integer, default=0)
+    last_updated = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
     scans = relationship("Scan", back_populates="user")
+    followers = relationship("UserFollower", foreign_keys="UserFollower.following_id", back_populates="following")
+    following = relationship("UserFollower", foreign_keys="UserFollower.follower_id", back_populates="follower")
 
 class Scan(Base):
     __tablename__ = "scans"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    target_username = Column(String, index=True)
-    status = Column(String)  # queued, running, done, error
-    result_data = Column(Text)  # JSON string com os resultados
+    username = Column(String(255), nullable=False, index=True)
+    job_id = Column(String(255), unique=True, nullable=False, index=True)
+    status = Column(String(50), nullable=False)  # queued, running, done, error
+    followers_count = Column(Integer, default=0)
+    following_count = Column(Integer, default=0)
+    ghosts_count = Column(Integer, default=0)
+    real_ghosts_count = Column(Integer, default=0)
+    famous_ghosts_count = Column(Integer, default=0)
+    profile_info = Column(JSON)
+    ghosts_data = Column(JSON)  # Lista completa de ghosts
+    real_ghosts = Column(JSON)  # Ghosts reais
+    famous_ghosts = Column(JSON)  # Ghosts famosos
+    error_message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
     user = relationship("User", back_populates="scans")
+
+class UserFollower(Base):
+    __tablename__ = "user_followers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Quem segue
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Quem é seguido
+    is_following_back = Column(Boolean, default=False)  # Se segue de volta
+    is_ghost = Column(Boolean, default=False)  # Se é ghost
+    ghost_type = Column(String(50))  # real, famous, none
+    last_checked = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
+    following = relationship("User", foreign_keys=[following_id], back_populates="followers")
 
 class Payment(Base):
     __tablename__ = "payments"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    amount = Column(Integer)  # Valor em centavos
-    currency = Column(String, default="BRL")
-    status = Column(String)  # pending, completed, failed
-    payment_method = Column(String)  # stripe, paypal, etc
-    external_id = Column(String)  # ID do gateway de pagamento
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), default="BRL")
+    status = Column(String(50), nullable=False)  # pending, completed, failed
+    payment_method = Column(String(50))
+    transaction_id = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# Função para obter sessão do banco
+# Configuração do banco
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def create_tables():
+    """Cria todas as tabelas no banco de dados"""
+    Base.metadata.create_all(bind=engine)
+
 def get_db():
+    """Retorna uma sessão do banco de dados"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Criar tabelas
-def create_tables():
-    Base.metadata.create_all(bind=engine) 
+# Funções utilitárias para o banco
+def get_or_create_user(db, username, profile_info=None):
+    """Obtém ou cria um usuário no banco"""
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        user = User(
+            username=username,
+            full_name=profile_info.get('full_name') if profile_info else None,
+            profile_pic_url=profile_info.get('profile_pic_url') if profile_info else None,
+            profile_pic_url_hd=profile_info.get('profile_pic_url_hd') if profile_info else None,
+            biography=profile_info.get('biography') if profile_info else None,
+            is_private=profile_info.get('is_private', False) if profile_info else False,
+            is_verified=profile_info.get('is_verified', False) if profile_info else False,
+            followers_count=profile_info.get('followers_count', 0) if profile_info else 0,
+            following_count=profile_info.get('following_count', 0) if profile_info else 0,
+            posts_count=profile_info.get('posts_count', 0) if profile_info else 0
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    elif profile_info:
+        # Atualizar dados do perfil
+        user.full_name = profile_info.get('full_name', user.full_name)
+        user.profile_pic_url = profile_info.get('profile_pic_url', user.profile_pic_url)
+        user.profile_pic_url_hd = profile_info.get('profile_pic_url_hd', user.profile_pic_url_hd)
+        user.biography = profile_info.get('biography', user.biography)
+        user.is_private = profile_info.get('is_private', user.is_private)
+        user.is_verified = profile_info.get('is_verified', user.is_verified)
+        user.followers_count = profile_info.get('followers_count', user.followers_count)
+        user.following_count = profile_info.get('following_count', user.following_count)
+        user.posts_count = profile_info.get('posts_count', user.posts_count)
+        user.last_updated = datetime.utcnow()
+        db.commit()
+    
+    return user
+
+def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_data=None):
+    """Salva o resultado de um scan no banco"""
+    user = get_or_create_user(db, username, profile_info)
+    
+    scan = db.query(Scan).filter(Scan.job_id == job_id).first()
+    
+    if not scan:
+        scan = Scan(
+            job_id=job_id,
+            user_id=user.id,
+            username=username,
+            status=status
+        )
+        db.add(scan)
+    
+    scan.status = status
+    scan.profile_info = profile_info
+    
+    if ghosts_data:
+        scan.ghosts_data = ghosts_data.get('all', [])
+        scan.real_ghosts = ghosts_data.get('real_ghosts', [])
+        scan.famous_ghosts = ghosts_data.get('famous_ghosts', [])
+        scan.ghosts_count = len(ghosts_data.get('all', []))
+        scan.real_ghosts_count = len(ghosts_data.get('real_ghosts', []))
+        scan.famous_ghosts_count = len(ghosts_data.get('famous_ghosts', []))
+    
+    if profile_info:
+        scan.followers_count = profile_info.get('followers_count', 0)
+        scan.following_count = profile_info.get('following_count', 0)
+    
+    scan.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(scan)
+    
+    return scan
+
+def get_user_scan_history(db, username):
+    """Obtém o histórico de scans de um usuário"""
+    return db.query(Scan).filter(Scan.username == username).order_by(Scan.created_at.desc()).all()
+
+def get_cached_user_data(db, username):
+    """Obtém dados em cache de um usuário"""
+    user = db.query(User).filter(User.username == username).first()
+    if user:
+        return {
+            'profile_info': {
+                'username': user.username,
+                'full_name': user.full_name,
+                'profile_pic_url': user.profile_pic_url,
+                'profile_pic_url_hd': user.profile_pic_url_hd,
+                'biography': user.biography,
+                'is_private': user.is_private,
+                'is_verified': user.is_verified,
+                'followers_count': user.followers_count,
+                'following_count': user.following_count,
+                'posts_count': user.posts_count
+            },
+            'last_updated': user.last_updated
+        }
+    return None 
