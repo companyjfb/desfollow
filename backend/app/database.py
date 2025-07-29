@@ -145,7 +145,7 @@ def get_or_create_user(db, username, profile_info=None):
     
     return user
 
-def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_data=None):
+def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_data=None, error_message=None):
     """Salva o resultado de um scan no banco"""
     print(f"💾 [DATABASE] Salvando scan: job_id={job_id}, status={status}")
     print(f"💾 [DATABASE] Profile info: {profile_info.get('followers_count', 0) if profile_info else 0} seguidores")
@@ -187,6 +187,10 @@ def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_dat
             scan.followers_count = ghosts_data.get('profile_followers_count', scan.followers_count)
         if ghosts_data.get('profile_following_count'):
             scan.following_count = ghosts_data.get('profile_following_count', scan.following_count)
+    
+    # Salvar mensagem de erro se fornecida
+    if error_message:
+        scan.error_message = error_message
     
     scan.updated_at = datetime.utcnow()
     db.commit()
