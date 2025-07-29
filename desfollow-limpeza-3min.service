@@ -1,0 +1,29 @@
+[Unit]
+Description=Desfollow Limpeza Automática 3 Minutos
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/desfollow
+ExecStart=/usr/bin/python3 /root/desfollow/sistema_limpeza_3_minutos.py
+Restart=always
+RestartSec=5
+
+# Configurações de logging
+StandardOutput=journal
+StandardError=journal
+
+# Configurações de segurança
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/desfollow /tmp
+
+# Variáveis de ambiente
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target 
