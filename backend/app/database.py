@@ -16,6 +16,7 @@ class User(Base):
     username = Column(String(255), unique=True, index=True, nullable=False)
     full_name = Column(String(255))
     email = Column(String(255), unique=True, nullable=True)
+    hashed_password = Column(String(255), nullable=True)  # Para autenticação
     profile_pic_url = Column(Text)
     profile_pic_url_hd = Column(Text)
     biography = Column(Text)
