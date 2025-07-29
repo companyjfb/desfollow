@@ -326,10 +326,16 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 print(f"   🔄 {duplicates} duplicados ignorados")
                 print(f"   📈 Total acumulado: {len(all_followers)} followers")
                 
-                # Verificar se há mais páginas (se retornou menos de 25 usuários, é a última)
+                # Verificar se há mais páginas - só para se retornou 0 usuários ou muito poucos
                 print(f"🔢 [FOLLOWERS] Controle de paginação: {len(users)} usuários recebidos")
-                if len(users) < 25:
-                    print(f"🏁 [FOLLOWERS] Última página alcançada - Menos de 25 usuários ({len(users)})")
+                if len(users) == 0:
+                    print(f"🏁 [FOLLOWERS] Última página alcançada - Nenhum usuário retornado")
+                    break
+                elif len(users) < 10 and page > 1:
+                    print(f"🏁 [FOLLOWERS] Possível última página - Poucos usuários ({len(users)}) na página {page}")
+                    # Continue para mais uma página para ter certeza
+                elif len(users) < 5:
+                    print(f"🏁 [FOLLOWERS] Última página alcançada - Muito poucos usuários ({len(users)})")
                     break
                 
                 # max_id é calculado automaticamente no início do loop baseado na página
@@ -440,9 +446,16 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguindo encontrados ({page_new_users} novos no banco)")
                 
-                # Verificar se há mais páginas (se retornou menos de 25 usuários, é a última)
-                if len(users) < 25:
-                    print(f"📄 Última página alcançada (menos de 25 usuários)")
+                # Verificar se há mais páginas - só para se retornou 0 usuários ou muito poucos
+                print(f"🔢 [FOLLOWING] Controle de paginação: {len(users)} usuários recebidos")
+                if len(users) == 0:
+                    print(f"🏁 [FOLLOWING] Última página alcançada - Nenhum usuário retornado")
+                    break
+                elif len(users) < 10 and page > 1:
+                    print(f"🏁 [FOLLOWING] Possível última página - Poucos usuários ({len(users)}) na página {page}")
+                    # Continue para mais uma página para ter certeza
+                elif len(users) < 5:
+                    print(f"🏁 [FOLLOWING] Última página alcançada - Muito poucos usuários ({len(users)})")
                     break
                 
                 # max_id é calculado automaticamente no início do loop baseado na página
