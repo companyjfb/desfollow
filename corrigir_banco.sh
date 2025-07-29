@@ -8,15 +8,35 @@ source venv/bin/activate
 
 echo "🗄️ Conectando ao banco e corrigindo tabelas..."
 
+# Mudar para o diretório backend
+cd backend
+
 python3 -c "
 import os
+import sys
 from dotenv import load_dotenv
 import psycopg2
 
+# Carregar variáveis de ambiente
 load_dotenv()
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 print(f'DATABASE_URL: {DATABASE_URL}')
+
+if not DATABASE_URL:
+    print('❌ DATABASE_URL não encontrada!')
+    print('Verificando arquivo .env...')
+    
+    # Listar conteúdo do .env
+    try:
+        with open('.env', 'r') as f:
+            content = f.read()
+            print('Conteúdo do .env:')
+            print(content)
+    except Exception as e:
+        print(f'Erro ao ler .env: {e}')
+    
+    exit(1)
 
 try:
     conn = psycopg2.connect(DATABASE_URL)
@@ -157,6 +177,9 @@ try:
 except Exception as e:
     print(f'❌ Erro ao corrigir banco: {e}')
 "
+
+# Voltar ao diretório raiz
+cd ..
 
 echo ""
 echo "🔧 Reiniciando backend..."
