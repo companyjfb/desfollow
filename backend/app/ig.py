@@ -212,18 +212,22 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
     """
     Obtém lista de seguidores com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"📱 Buscando seguidores (5 páginas de 25 usuários)...")
+    print(f"📱 [FOLLOWERS] Iniciando busca de seguidores para user_id: {user_id}")
+    print(f"📱 [FOLLOWERS] Configuração: {5} páginas máximas, ~25 usuários por página")
     
     all_followers = []
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
+    print(f"🔄 [FOLLOWERS] Loop de paginação iniciado (páginas 1-{max_pages})")
+    
     while page <= max_pages:
         # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
         max_id = None if page == 1 else (page - 1) * 25
         
-        print(f"📄 Página {page}/{max_pages} de seguidores (max_id: {max_id})...")
+        print(f"\n📄 [FOLLOWERS] === PÁGINA {page}/{max_pages} ===")
+        print(f"🔢 [FOLLOWERS] max_id calculado: {max_id} (baseado em página {page})")
         
         try:
             headers = {
@@ -237,38 +241,59 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
             if max_id is not None:
                 params['max_id'] = str(max_id)
             
-            print(f"📡 URL: {url}")
-            print(f"📝 Params: {params}")
+            print(f"📡 [FOLLOWERS] Fazendo requisição para: {url}")
+            print(f"📝 [FOLLOWERS] Parâmetros: {params}")
+            print(f"🔑 [FOLLOWERS] Headers preparados (host: {headers.get('x-rapidapi-host', 'N/A')})")
             
+            print(f"⏳ [FOLLOWERS] Enviando requisição HTTP...")
             response = requests.get(url, headers=headers, params=params)
+            print(f"✅ [FOLLOWERS] Resposta recebida em {response.elapsed.total_seconds():.2f}s")
             
-            print(f"📊 Status code: {response.status_code}")
+            print(f"📊 [FOLLOWERS] Status HTTP: {response.status_code}")
             
             if response.status_code == 200:
+                print(f"🔍 [FOLLOWERS] Processando resposta JSON...")
                 data = response.json()
+                print(f"📦 [FOLLOWERS] Tipo de resposta: {type(data)}")
                 
                 # API retorna lista direta, não dict com 'users'
                 if isinstance(data, list):
                     users = data
-                    print(f"📋 Response: lista com {len(users)} usuários")
+                    print(f"✅ [FOLLOWERS] Lista direta com {len(users)} usuários")
                 else:
                     # Fallback para estrutura dict (caso mude no futuro)
                     users = data.get('users', [])
-                    print(f"📋 Response data: {data}")
+                    print(f"⚠️ [FOLLOWERS] Estrutura dict detectada, extraindo 'users': {len(users)} usuários")
+                    print(f"📋 [FOLLOWERS] Chaves disponíveis: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
                 
                 if not users:
-                    print(f"📭 Nenhum usuário encontrado na página {page}")
+                    print(f"❌ [FOLLOWERS] Nenhum usuário encontrado na página {page} - Finalizando paginação")
                     break
                 
+                print(f"🎯 [FOLLOWERS] {len(users)} usuários válidos para processar")
+                
                 # Processar usuários e salvar no banco
+                print(f"⚙️ [FOLLOWERS] Iniciando processamento de {len(users)} usuários...")
                 new_users = []
                 page_new_users = 0
+                duplicates = 0
                 
-                for user in users:
+                for i, user in enumerate(users):
                     username = user.get('username')
-                    if username and not any(f['username'] == username for f in all_followers):
-                        # Salvar usuário no banco se não existir
-                        if db_session:
+                    if i < 3:  # Log dos primeiros 3 usuários para debug
+                        print(f"🔍 [FOLLOWERS] User {i+1}: @{username} - {user.get('full_name', 'N/A')}")
+                    
+                    if not username:
+                        print(f"⚠️ [FOLLOWERS] Usuário sem username ignorado: {user}")
+                        continue
+                        
+                    if any(f['username'] == username for f in all_followers):
+                        duplicates += 1
+                        continue
+                    
+                    # Salvar usuário no banco se não existir
+                    if db_session:
+                        try:
                             get_or_create_user(db_session, username, {
                                 'username': username,
                                 'full_name': user.get('full_name', ''),
@@ -282,50 +307,68 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                                 'posts_count': user.get('edge_owner_to_timeline_media', {}).get('count', 0)
                             })
                             page_new_users += 1
-                        
-                        new_users.append(user)
+                        except Exception as e:
+                            print(f"⚠️ [FOLLOWERS] Erro ao salvar usuário @{username}: {e}")
+                    
+                    new_users.append(user)
                 
                 all_followers.extend(new_users)
                 total_new_users += page_new_users
                 
-                print(f"✅ Página {page}: {len(new_users)} seguidores encontrados ({page_new_users} novos no banco)")
+                print(f"📊 [FOLLOWERS] Página {page} processada:")
+                print(f"   ✅ {len(new_users)} seguidores válidos")
+                print(f"   💾 {page_new_users} salvos no banco")
+                print(f"   🔄 {duplicates} duplicados ignorados")
+                print(f"   📈 Total acumulado: {len(all_followers)} followers")
                 
                 # Verificar se há mais páginas (se retornou menos de 25 usuários, é a última)
+                print(f"🔢 [FOLLOWERS] Controle de paginação: {len(users)} usuários recebidos")
                 if len(users) < 25:
-                    print(f"📄 Última página alcançada (menos de 25 usuários)")
+                    print(f"🏁 [FOLLOWERS] Última página alcançada - Menos de 25 usuários ({len(users)})")
                     break
                 
                 # max_id é calculado automaticamente no início do loop baseado na página
                 page += 1
+                print(f"⏭️ [FOLLOWERS] Avançando para página {page} em 1 segundo...")
                 await asyncio.sleep(1)  # Rate limiting
             else:
-                print(f"❌ Erro na API: {response.status_code}")
-                print(f"📄 Response text: {response.text}")
+                print(f"❌ [FOLLOWERS] Erro HTTP {response.status_code}")
+                print(f"📄 [FOLLOWERS] Response: {response.text[:200]}..." if len(response.text) > 200 else response.text)
                 break
                 
         except Exception as e:
-            print(f"❌ Erro ao obter seguidores na página {page}: {e}")
+            print(f"💥 [FOLLOWERS] ERRO na página {page}: {e}")
+            import traceback
+            print(f"📋 [FOLLOWERS] Stacktrace: {traceback.format_exc()}")
             break
     
-    print(f"🎯 Total de seguidores: {len(all_followers)} ({total_new_users} novos salvos no banco)")
+    print(f"\n🎯 [FOLLOWERS] === RESULTADO FINAL ===")
+    print(f"📊 [FOLLOWERS] Total de seguidores obtidos: {len(all_followers)}")
+    print(f"💾 [FOLLOWERS] Novos usuários salvos no banco: {total_new_users}")
+    print(f"📄 [FOLLOWERS] Páginas processadas: {page - 1}/{max_pages}")
+    print(f"⏱️ [FOLLOWERS] Busca de followers concluída!")
     return all_followers
 
 async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
     Obtém lista de seguindo com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"📱 Buscando seguindo (5 páginas de 25 usuários)...")
+    print(f"👥 [FOLLOWING] Iniciando busca de seguindo para user_id: {user_id}")
+    print(f"👥 [FOLLOWING] Configuração: {5} páginas máximas, ~25 usuários por página")
     
     all_following = []
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
+    print(f"🔄 [FOLLOWING] Loop de paginação iniciado (páginas 1-{max_pages})")
+    
     while page <= max_pages:
         # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
         max_id = None if page == 1 else (page - 1) * 25
         
-        print(f"📄 Página {page}/{max_pages} de seguindo (max_id: {max_id})...")
+        print(f"\n👥 [FOLLOWING] === PÁGINA {page}/{max_pages} ===")
+        print(f"🔢 [FOLLOWING] max_id calculado: {max_id} (baseado em página {page})")
         
         try:
             headers = {
