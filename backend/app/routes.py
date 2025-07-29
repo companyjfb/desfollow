@@ -134,6 +134,8 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
         ).order_by(Scan.updated_at.desc()).first()
         
         # Verificar se dados são válidos antes de reutilizar
+        should_reuse_data = False
+        
         if recent_scan and recent_scan.ghosts_data:
             # Verificar se dados não estão zerados/inválidos
             followers_count = recent_scan.followers_count or 0
@@ -170,16 +172,18 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
                 
                 # Salvar resultado reutilizado
                 save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
+                should_reuse_data = True
             else:
                 print(f"⚠️ Dados recentes INVÁLIDOS encontrados (zerados)")
                 print(f"📊 Seguidores perfil: {profile_followers}, Ghosts: {ghosts_count}")
                 print(f"🔄 Forçando scan novo para obter dados válidos...")
-                
-                # Continuar para scan novo
-                recent_scan = None
-            
-        else:
+        
+        # Se não deve reutilizar dados, fazer scan novo
+        if not should_reuse_data:
             print(f"📱 Obtendo dados frescos do Instagram...")
+            # Inicializar profile_info
+            profile_info = None
+            
             # Verificar cache do usuário
             cached_data = get_cached_user_data(db, username)
             if cached_data:
@@ -188,6 +192,9 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             else:
                 print(f"📱 Obtendo dados do perfil para: {username}")
                 profile_info = get_profile_info(username)
+        else:
+            # Dados foram reutilizados, terminar função
+            return
         
         print(f"📊 Profile info obtido: {profile_info}")
         
