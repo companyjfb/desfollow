@@ -186,7 +186,7 @@ def verificar_api_health():
     """Verifica quantos jobs ativos a API reporta"""
     try:
         # Usar HTTP como especificado na memória [[memory:4664968]]
-        response = requests.get('http://api.desfollow.com.br/health', timeout=10)
+        response = requests.get('http://api.desfollow.com.br/api/health', timeout=10)
         if response.status_code == 200:
             data = response.json()
             jobs_active = data.get('jobs_active', 0)

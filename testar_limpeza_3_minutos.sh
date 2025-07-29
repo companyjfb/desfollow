@@ -11,7 +11,7 @@ timestamp() {
 
 # Função para verificar jobs ativos
 check_jobs() {
-    local jobs=$(curl -s http://api.desfollow.com.br/health 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('jobs_active', 'erro'))" 2>/dev/null)
+    local jobs=$(curl -s http://api.desfollow.com.br/api/health 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('jobs_active', 'erro'))" 2>/dev/null)
     echo "$jobs"
 }
 
@@ -136,4 +136,4 @@ echo "✅ TESTE CONCLUÍDO!"
 echo ""
 echo "📋 Para monitoramento contínuo:"
 echo "   journalctl -u desfollow-limpeza-3min -f"
-echo "   watch -n 5 'curl -s http://api.desfollow.com.br/health | python3 -m json.tool'" 
+echo "   watch -n 5 'curl -s http://api.desfollow.com.br/api/health | python3 -m json.tool'" 

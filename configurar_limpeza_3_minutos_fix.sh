@@ -147,7 +147,7 @@ echo ""
 
 echo "📋 11. Testando API health..."
 # Fazer chamada HTTP como especificado na memória
-API_RESPONSE=$(curl -s http://api.desfollow.com.br/health 2>/dev/null)
+API_RESPONSE=$(curl -s http://api.desfollow.com.br/api/health 2>/dev/null)
 if [ $? -eq 0 ]; then
     echo "$API_RESPONSE" | python3 -m json.tool 2>/dev/null || echo "API respondeu: $API_RESPONSE"
 else
@@ -179,4 +179,4 @@ echo ""
 
 # Mostrar comando para monitorar em tempo real
 echo "📊 Para monitorar em tempo real:"
-echo "   watch -n 2 'curl -s http://api.desfollow.com.br/health | python3 -m json.tool'" 
+echo "   watch -n 2 'curl -s http://api.desfollow.com.br/api/health | python3 -m json.tool'" 
