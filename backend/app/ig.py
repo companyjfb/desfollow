@@ -3,6 +3,7 @@ import os
 import asyncio
 from typing import List, Dict, Any
 import re
+from .database import get_or_create_user, get_db, UserFollower, User
 
 # Palavras-chave expandidas para detectar perfis famosos/influencers
 FAMOUS_KEYWORDS = [
@@ -117,7 +118,7 @@ def classify_ghost(username: str, full_name: str = "", biography: str = "") -> s
     else:
         return "real"
 
-async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user_id: str = None) -> Dict[str, Any]:
+async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user_id: str = None, db_session = None) -> Dict[str, Any]:
     """
     Obtém ghosts com dados do perfil e classificação melhorada.
     """
@@ -141,9 +142,9 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     
     print(f"✅ Usando user_id já obtido: {user_id}")
     
-    # Obter seguidores e seguindo
-    followers = await get_followers(user_id)
-    following = await get_following(user_id)
+    # Obter seguidores e seguindo com paginação otimizada
+    followers = await get_followers_optimized(user_id, db_session)
+    following = await get_following_optimized(user_id, db_session)
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
@@ -177,18 +178,19 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         "following_count": len(following)
     }
 
-async def get_followers(user_id: str) -> List[Dict]:
+async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
-    Obtém lista de seguidores com dados completos.
+    Obtém lista de seguidores com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"🔄 Obtendo TODOS os seguidores para user_id: {user_id}...")
+    print(f"🔄 Obtendo seguidores com paginação otimizada para user_id: {user_id}...")
     
-    followers = []
+    all_followers = []
     max_id = None
     page = 1
+    max_pages = 5  # Limite de 5 páginas
     
-    while True:
-        print(f"📄 Paginação de seguidores com /chunk...")
+    while page <= max_pages:
+        print(f"📄 Página {page}/{max_pages} de seguidores...")
         
         try:
             headers = {
@@ -210,16 +212,33 @@ async def get_followers(user_id: str) -> List[Dict]:
                 users = data.get('users', [])
                 
                 if not users:
+                    print(f"📭 Nenhum usuário encontrado na página {page}")
                     break
                 
-                # Adicionar apenas usuários novos
+                # Processar usuários e salvar no banco
                 new_users = []
                 for user in users:
-                    if not any(f['username'] == user['username'] for f in followers):
+                    username = user.get('username')
+                    if username and not any(f['username'] == username for f in all_followers):
+                        # Salvar usuário no banco se não existir
+                        if db_session:
+                            get_or_create_user(db_session, username, {
+                                'username': username,
+                                'full_name': user.get('full_name', ''),
+                                'profile_pic_url': user.get('profile_pic_url', ''),
+                                'profile_pic_url_hd': user.get('profile_pic_url_hd', ''),
+                                'biography': user.get('biography', ''),
+                                'is_private': user.get('is_private', False),
+                                'is_verified': user.get('is_verified', False),
+                                'followers_count': user.get('edge_followed_by', {}).get('count', 0),
+                                'following_count': user.get('edge_follow', {}).get('count', 0),
+                                'posts_count': user.get('edge_owner_to_timeline_media', {}).get('count', 0)
+                            })
+                        
                         new_users.append(user)
                 
-                followers.extend(new_users)
-                print(f"✅ Página {page} (max_id={max_id}): {len(new_users)} seguidores NOVOS encontrados")
+                all_followers.extend(new_users)
+                print(f"✅ Página {page}: {len(new_users)} seguidores NOVOS encontrados")
                 
                 # Verificar se há mais páginas
                 if 'next_max_id' in data and data['next_max_id']:
@@ -227,30 +246,32 @@ async def get_followers(user_id: str) -> List[Dict]:
                     page += 1
                     await asyncio.sleep(1)  # Rate limiting
                 else:
+                    print(f"📄 Última página alcançada")
                     break
             else:
                 print(f"❌ Erro na API: {response.status_code}")
                 break
                 
         except Exception as e:
-            print(f"❌ Erro ao obter seguidores: {e}")
+            print(f"❌ Erro ao obter seguidores na página {page}: {e}")
             break
     
-    print(f"🎯 Seguidores únicos encontrados: {len(followers)}")
-    return followers
+    print(f"🎯 Total de seguidores únicos encontrados: {len(all_followers)}")
+    return all_followers
 
-async def get_following(user_id: str) -> List[Dict]:
+async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
-    Obtém lista de seguindo com dados completos.
+    Obtém lista de seguindo com paginação otimizada (5 páginas de 25 usuários).
     """
-    print(f"🔄 Obtendo TODOS os seguindo para user_id: {user_id}...")
+    print(f"🔄 Obtendo seguindo com paginação otimizada para user_id: {user_id}...")
     
-    following = []
+    all_following = []
     max_id = None
     page = 1
+    max_pages = 5  # Limite de 5 páginas
     
-    while True:
-        print(f"📄 Paginação de seguindo com /chunk...")
+    while page <= max_pages:
+        print(f"📄 Página {page}/{max_pages} de seguindo...")
         
         try:
             headers = {
@@ -272,16 +293,33 @@ async def get_following(user_id: str) -> List[Dict]:
                 users = data.get('users', [])
                 
                 if not users:
+                    print(f"📭 Nenhum usuário encontrado na página {page}")
                     break
                 
-                # Adicionar apenas usuários novos
+                # Processar usuários e salvar no banco
                 new_users = []
                 for user in users:
-                    if not any(f['username'] == user['username'] for f in following):
+                    username = user.get('username')
+                    if username and not any(f['username'] == username for f in all_following):
+                        # Salvar usuário no banco se não existir
+                        if db_session:
+                            get_or_create_user(db_session, username, {
+                                'username': username,
+                                'full_name': user.get('full_name', ''),
+                                'profile_pic_url': user.get('profile_pic_url', ''),
+                                'profile_pic_url_hd': user.get('profile_pic_url_hd', ''),
+                                'biography': user.get('biography', ''),
+                                'is_private': user.get('is_private', False),
+                                'is_verified': user.get('is_verified', False),
+                                'followers_count': user.get('edge_followed_by', {}).get('count', 0),
+                                'following_count': user.get('edge_follow', {}).get('count', 0),
+                                'posts_count': user.get('edge_owner_to_timeline_media', {}).get('count', 0)
+                            })
+                        
                         new_users.append(user)
                 
-                following.extend(new_users)
-                print(f"✅ Página {page} (max_id={max_id}): {len(new_users)} seguindo NOVOS encontrados")
+                all_following.extend(new_users)
+                print(f"✅ Página {page}: {len(new_users)} seguindo NOVOS encontrados")
                 
                 # Verificar se há mais páginas
                 if 'next_max_id' in data and data['next_max_id']:
@@ -289,14 +327,27 @@ async def get_following(user_id: str) -> List[Dict]:
                     page += 1
                     await asyncio.sleep(1)  # Rate limiting
                 else:
+                    print(f"📄 Última página alcançada")
                     break
             else:
                 print(f"❌ Erro na API: {response.status_code}")
                 break
                 
         except Exception as e:
-            print(f"❌ Erro ao obter seguindo: {e}")
+            print(f"❌ Erro ao obter seguindo na página {page}: {e}")
             break
     
-    print(f"🎯 Seguindo únicos encontrados: {len(following)}")
-    return following 
+    print(f"🎯 Total de seguindo únicos encontrados: {len(all_following)}")
+    return all_following
+
+async def get_followers(user_id: str) -> List[Dict]:
+    """
+    Função legada - mantida para compatibilidade.
+    """
+    return await get_followers_optimized(user_id)
+
+async def get_following(user_id: str) -> List[Dict]:
+    """
+    Função legada - mantida para compatibilidade.
+    """
+    return await get_following_optimized(user_id) 

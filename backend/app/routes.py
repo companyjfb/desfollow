@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi
-from .database import get_db, get_or_create_user, save_scan_result, get_user_scan_history, get_cached_user_data
+from .database import get_db, get_or_create_user, save_scan_result, get_user_scan_history, get_cached_user_data, Scan
 from sqlalchemy.orm import Session
 import asyncio
 import requests
@@ -80,10 +80,12 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(
     username = username.lstrip("@")
     print(f"🧹 Username limpo: {username}")
     
-    # Verificar se já existe scan recente no banco
+    # Verificar se já existe scan recente no banco (últimas 24h)
+    from datetime import datetime, timedelta
     recent_scans = db.query(Scan).filter(
         Scan.username == username,
-        Scan.status == "done"
+        Scan.status == "done",
+        Scan.updated_at >= datetime.utcnow() - timedelta(hours=24)
     ).order_by(Scan.updated_at.desc()).limit(1).all()
     
     if recent_scans:
@@ -105,7 +107,7 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(
 
 async def run_scan_with_database(job_id: str, username: str, db: Session):
     """
-    Executa o scan com integração ao banco de dados.
+    Executa o scan com integração ao banco de dados e paginação otimizada.
     """
     try:
         print(f"🚀 Iniciando scan com banco para job {job_id}: {username}")
@@ -132,14 +134,20 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             # Pequeno delay para garantir que o frontend detecte os dados
             await asyncio.sleep(0.1)
             
-            # Obter ghosts
-            print(f"📱 Obtendo ghosts...")
-            ghosts_result = await get_ghosts_with_profile(username, profile_info)
+            # Obter ghosts com paginação otimizada (5 páginas de 25 usuários)
+            print(f"📱 Obtendo ghosts com paginação otimizada...")
+            ghosts_result = await get_ghosts_with_profile(username, profile_info, db_session=db)
             
             # Salvar resultado final no banco
             save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
             
             print(f"✅ Scan concluído e salvo no banco!")
+            print(f"📊 Estatísticas:")
+            print(f"   - Seguidores encontrados: {ghosts_result.get('followers_count', 0)}")
+            print(f"   - Seguindo encontrados: {ghosts_result.get('following_count', 0)}")
+            print(f"   - Ghosts totais: {ghosts_result.get('ghosts_count', 0)}")
+            print(f"   - Ghosts reais: {ghosts_result.get('real_ghosts_count', 0)}")
+            print(f"   - Ghosts famosos: {ghosts_result.get('famous_ghosts_count', 0)}")
             
         else:
             # Salvar erro no banco
