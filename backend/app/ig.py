@@ -215,12 +215,14 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
     print(f"📱 Buscando seguidores (5 páginas de 25 usuários)...")
     
     all_followers = []
-    max_id = None  # Primeira página sem max_id
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
     while page <= max_pages:
+        # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
+        max_id = None if page == 1 else (page - 1) * 25
+        
         print(f"📄 Página {page}/{max_pages} de seguidores (max_id: {max_id})...")
         
         try:
@@ -233,7 +235,7 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
             url = "https://instagram-premium-api-2023.p.rapidapi.com/v1/user/followers"
             params = {'user_id': user_id}
             if max_id is not None:
-                params['max_id'] = max_id
+                params['max_id'] = str(max_id)
             
             print(f"📡 URL: {url}")
             print(f"📝 Params: {params}")
@@ -293,20 +295,7 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                     print(f"📄 Última página alcançada (menos de 25 usuários)")
                     break
                 
-                # Para próxima página, usar o último ID da lista atual
-                if users:
-                    last_user = users[-1]
-                    # A API retorna 'pk' e 'id' como campos principais
-                    max_id = last_user.get('pk') or last_user.get('id')
-                    print(f"🔑 Próximo max_id: {max_id}")
-                    
-                    if not max_id:
-                        print(f"⚠️ Nenhum ID encontrado no último usuário: {last_user}")
-                        break
-                else:
-                    print(f"📄 Nenhum usuário para continuar paginação")
-                    break
-                
+                # max_id é calculado automaticamente no início do loop baseado na página
                 page += 1
                 await asyncio.sleep(1)  # Rate limiting
             else:
@@ -328,12 +317,14 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
     print(f"📱 Buscando seguindo (5 páginas de 25 usuários)...")
     
     all_following = []
-    max_id = None  # Primeira página sem max_id
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
     while page <= max_pages:
+        # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
+        max_id = None if page == 1 else (page - 1) * 25
+        
         print(f"📄 Página {page}/{max_pages} de seguindo (max_id: {max_id})...")
         
         try:
@@ -346,7 +337,7 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
             url = "https://instagram-premium-api-2023.p.rapidapi.com/v1/user/following"
             params = {'user_id': user_id}
             if max_id is not None:
-                params['max_id'] = max_id
+                params['max_id'] = str(max_id)
             
             print(f"📡 URL: {url}")
             print(f"📝 Params: {params}")
@@ -406,20 +397,7 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                     print(f"📄 Última página alcançada (menos de 25 usuários)")
                     break
                 
-                # Para próxima página, usar o último ID da lista atual
-                if users:
-                    last_user = users[-1]
-                    # A API retorna 'pk' e 'id' como campos principais
-                    max_id = last_user.get('pk') or last_user.get('id')
-                    print(f"🔑 Próximo max_id: {max_id}")
-                    
-                    if not max_id:
-                        print(f"⚠️ Nenhum ID encontrado no último usuário: {last_user}")
-                        break
-                else:
-                    print(f"📄 Nenhum usuário para continuar paginação")
-                    break
-                
+                # max_id é calculado automaticamente no início do loop baseado na página
                 page += 1
                 await asyncio.sleep(1)  # Rate limiting
             else:
