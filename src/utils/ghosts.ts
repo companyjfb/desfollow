@@ -1,19 +1,20 @@
 // Detecta automaticamente o host correto baseado na origem atual
 const getApiBaseUrl = () => {
   const host = window.location.hostname;
+  const protocol = window.location.protocol; // 'http:' ou 'https:'
   
-  // Para produção, usa a API subdomain
+  // Para produção, usa a API subdomain com o mesmo protocolo
   if (host === 'desfollow.com.br' || host === 'www.desfollow.com.br') {
-    return `https://api.desfollow.com.br/api`;
+    return `${protocol}//api.desfollow.com.br/api`;
   }
   
   // Para api.desfollow.com.br, usa o mesmo host
   if (host === 'api.desfollow.com.br') {
-    return `https://api.desfollow.com.br/api`;
+    return `${protocol}//api.desfollow.com.br/api`;
   }
   
   // Para outros domínios, tenta usar o mesmo host
-  return `https://${host}/api`;
+  return `${protocol}//${host}/api`;
 };
 
 const API_BASE_URL = getApiBaseUrl();

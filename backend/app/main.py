@@ -19,15 +19,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuração CORS apenas para domínios de produção
+# Configuração CORS para domínios de produção (HTTP e HTTPS)
 allowed_origins = [
-    # Domínios de produção
-    "https://desfollow.com.br",
-    "https://www.desfollow.com.br",
+    # Domínios de produção - HTTP
     "http://desfollow.com.br",
     "http://www.desfollow.com.br",
-    "https://api.desfollow.com.br",
     "http://api.desfollow.com.br",
+    # Domínios de produção - HTTPS
+    "https://desfollow.com.br",
+    "https://www.desfollow.com.br",
+    "https://api.desfollow.com.br",
 ]
 
 # Adiciona domínios de produção se configurados
