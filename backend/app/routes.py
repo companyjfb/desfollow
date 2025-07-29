@@ -3,6 +3,7 @@ import os
 from uuid import uuid4
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi, get_user_data_from_rapidapi
@@ -13,6 +14,7 @@ import requests
 import os
 import time
 from fastapi.responses import StreamingResponse
+import traceback
 
 router = APIRouter()
 
@@ -113,46 +115,31 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(
 
 async def run_scan_with_database(job_id: str, username: str, db: Session):
     """
-    Executa o scan com integração ao banco de dados e paginação otimizada.
+    Executa scan com integração ao banco de dados - versão otimizada e corrigida.
     """
     try:
         print(f"🚀 Iniciando scan com banco para job {job_id}: {username}")
         
-        # Adicionar start_time para rastrear jobs órfãos
-        import time
-        set_job(job_id, {
-            "status": "running",
-            "start_time": time.time(),
-            "username": username
-        })
+        # Verificar se há scan recente VÁLIDO para reutilizar
+        should_reuse_data = False
+        user_id = None  # Inicializar user_id
         
-        # Verificar dados recentes no banco (últimas 2 horas)
         recent_scan = db.query(Scan).filter(
             Scan.username == username,
-            Scan.status == "done",
-            Scan.updated_at >= datetime.utcnow() - timedelta(hours=2)
-        ).order_by(Scan.updated_at.desc()).first()
+            Scan.status == "done"
+        ).order_by(Scan.created_at.desc()).first()
         
-        # Verificar se dados são válidos antes de reutilizar
-        should_reuse_data = False
-        
-        if recent_scan and recent_scan.ghosts_data:
-            # Verificar se dados não estão zerados/inválidos
-            followers_count = recent_scan.followers_count or 0
+        if recent_scan:
+            # Verificar se os dados são VÁLIDOS (não zerados)
             profile_followers = recent_scan.profile_info.get('followers_count', 0) if recent_scan.profile_info else 0
             ghosts_count = recent_scan.ghosts_count or 0
             
-            is_data_valid = (
-                profile_followers > 0 or  # Profile tem seguidores válidos
-                (followers_count > 0 and ghosts_count >= 0)  # Ou dados de scan válidos
-            )
-            
-            if is_data_valid:
-                print(f"📋 Dados recentes VÁLIDOS encontrados no banco (últimas 2h)")
-                print(f"📊 Seguidores perfil: {profile_followers}, Ghosts: {ghosts_count}")
-                
-                # Reutilizar dados do banco
+            # Só reutilizar se há dados válidos (não zerados)
+            if profile_followers > 0 and ghosts_count > 0:
+                print(f"✅ Dados recentes VÁLIDOS encontrados: {profile_followers} seguidores, {ghosts_count} ghosts")
                 profile_info = recent_scan.profile_info
+                
+                # Recriar resultado do scan
                 ghosts_result = {
                     "ghosts": recent_scan.ghosts_data or [],
                     "ghosts_count": recent_scan.ghosts_count or 0,
@@ -160,14 +147,15 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
                     "famous_ghosts": recent_scan.famous_ghosts or [],
                     "real_ghosts_count": recent_scan.real_ghosts_count or 0,
                     "famous_ghosts_count": recent_scan.famous_ghosts_count or 0,
-                    "followers_count": recent_scan.followers_count or 0,
-                    "following_count": recent_scan.following_count or 0
+                    "followers_count": len(recent_scan.ghosts_data or []),
+                    "following_count": len(recent_scan.ghosts_data or []),
+                    "profile_followers_count": profile_followers,
+                    "profile_following_count": recent_scan.profile_info.get('following_count', 0) if recent_scan.profile_info else 0,
+                    "all": recent_scan.ghosts_data or []
                 }
                 
-                print(f"✅ Reutilizando dados VÁLIDOS do banco!")
-                print(f"📊 Estatísticas reutilizadas:")
-                print(f"   - Seguidores: {ghosts_result.get('followers_count', 0)}")
-                print(f"   - Seguindo: {ghosts_result.get('following_count', 0)}")
+                print(f"📊 Estatísticas dos dados reutilizados:")
+                print(f"   - Seguidores perfil: {profile_followers}")
                 print(f"   - Ghosts totais: {ghosts_result.get('ghosts_count', 0)}")
                 
                 # Salvar resultado reutilizado
@@ -184,26 +172,37 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             # Inicializar profile_info
             profile_info = None
             
-            # Verificar cache do usuário
+            # Verificar cache do usuário - MAS VERIFICAR SE É VÁLIDO
             cached_data = get_cached_user_data(db, username)
-            if cached_data:
-                print(f"📋 Dados em cache encontrados para: {username}")
-                profile_info = cached_data['profile_info']
-            else:
-                print(f"📱 Obtendo dados do perfil para: {username}")
+            if cached_data and cached_data.get('profile_info'):
+                cached_profile = cached_data['profile_info']
+                cached_followers = cached_profile.get('followers_count', 0) if cached_profile else 0
+                
+                if cached_followers > 0:
+                    print(f"📋 Dados VÁLIDOS em cache encontrados para: {username} ({cached_followers} seguidores)")
+                    profile_info = cached_profile
+                else:
+                    print(f"⚠️ Cache com dados zerados encontrado - buscando dados frescos")
+                    cached_data = None
+            
+            # Se não há cache válido, buscar dados frescos da API
+            if not cached_data or not profile_info or profile_info.get('followers_count', 0) == 0:
+                print(f"📱 Obtendo dados frescos da API para: {username}")
                 user_id, profile_info = get_user_data_from_rapidapi(username)
                 
                 # Se não conseguiu obter user_id, mas tem profile_info, ainda pode prosseguir
                 if not user_id and not profile_info:
                     print(f"❌ Falha total ao obter dados do Instagram")
                     profile_info = None
+                elif profile_info and profile_info.get('followers_count', 0) > 0:
+                    print(f"✅ Dados frescos obtidos: {profile_info.get('followers_count', 0)} seguidores")
         else:
             # Dados foram reutilizados, terminar função
             return
         
         print(f"📊 Profile info obtido: {profile_info}")
         
-        if profile_info:
+        if profile_info and profile_info.get('followers_count', 0) > 0:
             # Salvar/atualizar usuário no banco
             user = get_or_create_user(db, username, profile_info)
             print(f"✅ Usuário criado/atualizado no banco: {user.id}")
@@ -232,10 +231,10 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             print(f"   - Ghosts famosos: {ghosts_result.get('famous_ghosts_count', 0)}")
             
         else:
-            print(f"❌ Profile info é None, salvando erro no banco")
+            print(f"❌ Profile info é None ou zerado, salvando erro no banco")
             # Salvar erro no banco
-            save_scan_result(db, job_id, username, "error", error_message="Não foi possível obter dados do perfil")
-            print(f"❌ Erro: Não foi possível obter dados do perfil")
+            save_scan_result(db, job_id, username, "error", error_message="Não foi possível obter dados válidos do perfil")
+            print(f"❌ Erro: Não foi possível obter dados válidos do perfil")
             
     except Exception as e:
         print(f"❌ Erro no scan: {e}")

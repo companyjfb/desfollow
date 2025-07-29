@@ -231,22 +231,40 @@ def get_user_scan_history(db, username):
     return db.query(Scan).filter(Scan.username == username).order_by(Scan.created_at.desc()).all()
 
 def get_cached_user_data(db, username):
-    """Obtém dados em cache de um usuário"""
+    """Obtém dados em cache de um usuário - apenas se VÁLIDOS e RECENTES"""
     user = db.query(User).filter(User.username == username).first()
     if user:
-        return {
-            'profile_info': {
-                'username': user.username,
-                'full_name': user.full_name,
-                'profile_pic_url': user.profile_pic_url,
-                'profile_pic_url_hd': user.profile_pic_url_hd,
-                'biography': user.biography,
-                'is_private': user.is_private,
-                'is_verified': user.is_verified,
-                'followers_count': user.followers_count,
-                'following_count': user.following_count,
-                'posts_count': user.posts_count
-            },
-            'last_updated': user.last_updated
-        }
+        # Verificar se os dados são válidos (não zerados)
+        followers_count = user.followers_count or 0
+        
+        # Verificar idade dos dados (não mais que 24 horas)
+        from datetime import datetime, timedelta
+        if user.last_updated:
+            age = datetime.utcnow() - user.last_updated
+            max_age = timedelta(hours=24)
+            if age > max_age:
+                print(f"⚠️ Cache muito antigo para {username}: {age.total_seconds()/3600:.1f}h")
+                return None
+        
+        # Só retornar se há dados válidos
+        if followers_count > 0:
+            print(f"✅ Cache válido encontrado para {username}: {followers_count} seguidores")
+            return {
+                'profile_info': {
+                    'username': user.username,
+                    'full_name': user.full_name,
+                    'profile_pic_url': user.profile_pic_url,
+                    'profile_pic_url_hd': user.profile_pic_url_hd,
+                    'biography': user.biography,
+                    'is_private': user.is_private,
+                    'is_verified': user.is_verified,
+                    'followers_count': user.followers_count,
+                    'following_count': user.following_count,
+                    'posts_count': user.posts_count
+                },
+                'last_updated': user.last_updated
+            }
+        else:
+            print(f"⚠️ Cache com dados zerados encontrado para {username} - ignorando")
+    
     return None 
