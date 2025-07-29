@@ -215,13 +215,13 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
     print(f"📱 Buscando seguidores (5 páginas de 25 usuários)...")
     
     all_followers = []
-    max_id = None
+    max_id = None  # Primeira página sem max_id
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
     while page <= max_pages:
-        print(f"📄 Página {page}/{max_pages} de seguidores...")
+        print(f"📄 Página {page}/{max_pages} de seguidores (max_id: {max_id})...")
         
         try:
             headers = {
@@ -231,16 +231,22 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
             }
             
             url = "https://instagram-premium-api-2023.p.rapidapi.com/v1/user/followers"
-            params = {
-                'user_id': user_id,
-                'max_id': max_id
-            }
+            params = {'user_id': user_id}
+            if max_id is not None:
+                params['max_id'] = max_id
+            
+            print(f"📡 URL: {url}")
+            print(f"📝 Params: {params}")
             
             response = requests.get(url, headers=headers, params=params)
+            
+            print(f"📊 Status code: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
                 users = data.get('users', [])
+                
+                print(f"📋 Response data: {data}")
                 
                 if not users:
                     print(f"📭 Nenhum usuário encontrado na página {page}")
@@ -276,16 +282,17 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguidores encontrados ({page_new_users} novos no banco)")
                 
-                # Verificar se há mais páginas
-                if 'next_max_id' in data and data['next_max_id']:
-                    max_id = data['next_max_id']
-                    page += 1
-                    await asyncio.sleep(1)  # Rate limiting
+                # Incrementar max_id para próxima página (25 em 25)
+                if page == 1:
+                    max_id = 25
                 else:
-                    print(f"📄 Última página alcançada")
-                    break
+                    max_id = max_id + 25
+                
+                page += 1
+                await asyncio.sleep(1)  # Rate limiting
             else:
                 print(f"❌ Erro na API: {response.status_code}")
+                print(f"📄 Response text: {response.text}")
                 break
                 
         except Exception as e:
@@ -302,13 +309,13 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
     print(f"📱 Buscando seguindo (5 páginas de 25 usuários)...")
     
     all_following = []
-    max_id = None
+    max_id = None  # Primeira página sem max_id
     page = 1
     max_pages = 5  # Limite de 5 páginas
     total_new_users = 0
     
     while page <= max_pages:
-        print(f"📄 Página {page}/{max_pages} de seguindo...")
+        print(f"📄 Página {page}/{max_pages} de seguindo (max_id: {max_id})...")
         
         try:
             headers = {
@@ -318,16 +325,22 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
             }
             
             url = "https://instagram-premium-api-2023.p.rapidapi.com/v1/user/following"
-            params = {
-                'user_id': user_id,
-                'max_id': max_id
-            }
+            params = {'user_id': user_id}
+            if max_id is not None:
+                params['max_id'] = max_id
+            
+            print(f"📡 URL: {url}")
+            print(f"📝 Params: {params}")
             
             response = requests.get(url, headers=headers, params=params)
+            
+            print(f"📊 Status code: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
                 users = data.get('users', [])
+                
+                print(f"📋 Response data: {data}")
                 
                 if not users:
                     print(f"📭 Nenhum usuário encontrado na página {page}")
@@ -363,16 +376,17 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguindo encontrados ({page_new_users} novos no banco)")
                 
-                # Verificar se há mais páginas
-                if 'next_max_id' in data and data['next_max_id']:
-                    max_id = data['next_max_id']
-                    page += 1
-                    await asyncio.sleep(1)  # Rate limiting
+                # Incrementar max_id para próxima página (25 em 25)
+                if page == 1:
+                    max_id = 25
                 else:
-                    print(f"📄 Última página alcançada")
-                    break
+                    max_id = max_id + 25
+                
+                page += 1
+                await asyncio.sleep(1)  # Rate limiting
             else:
                 print(f"❌ Erro na API: {response.status_code}")
+                print(f"📄 Response text: {response.text}")
                 break
                 
         except Exception as e:
