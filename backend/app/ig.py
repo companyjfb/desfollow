@@ -78,8 +78,8 @@ def get_user_id_from_rapidapi(username: str) -> str:
             print(f"📋 Response data para user_id: {data}")
             if 'user' in data:
                 user_data = data['user']
-                # Tentar 'pk' primeiro, depois 'id'
-                user_id = user_data.get('pk') or user_data.get('id')
+                # Usar 'id' diretamente (conforme API)
+                user_id = user_data.get('id')
                 if user_id:
                     print(f"✅ User ID encontrado: {user_id}")
                     return str(user_id)
