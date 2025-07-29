@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Crown, Lock, Zap, Users, TrendingDown, AlertTriangle, Shield, CheckCircle, Star, Target, ArrowRight } from 'lucide-react';
 import InstagramImage from '@/components/InstagramImage';
 import { StatusResponse } from '../utils/ghosts';
+import { useScanCache } from '../hooks/use-scan-cache';
 
 interface GhostUser {
   username: string;
@@ -60,9 +61,58 @@ const Results = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { getCachedOrFetchScan } = useScanCache();
   
-  // Tenta obter dados reais da API
-  const scanData: ScanData = location.state?.scanData;
+  const [scanData, setScanData] = useState<ScanData | null>(location.state?.scanData || null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fromCache, setFromCache] = useState(location.state?.fromCache || false);
+  
+  // Buscar dados se não estão disponíveis no state
+  useEffect(() => {
+    const loadScanData = async () => {
+      if (!scanData && username) {
+        console.log('📭 Dados não encontrados no state. Buscando em cache/banco...');
+        setIsLoading(true);
+        
+        try {
+          const cachedData = await getCachedOrFetchScan(username);
+          
+          if (cachedData) {
+            console.log('✅ Dados carregados do cache/banco');
+            setScanData(cachedData);
+            setFromCache(true);
+          } else {
+            console.log('📭 Nenhum dado encontrado. Redirecionando para nova análise...');
+            navigate(`/analyzing/${username}`);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao carregar dados:', error);
+          navigate('/');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadScanData();
+  }, [username, scanData, navigate, getCachedOrFetchScan]);
+  
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white text-lg">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Se não tem dados, redirecionar
+  if (!scanData) {
+    return null; // useEffect vai redirecionar
+  }
   
   // Combina pessoas reais e verificadas, priorizando pessoas reais
   const allGhosts = [];
@@ -147,6 +197,18 @@ const Results = () => {
         
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl mb-8">
+          {/* Cache indicator */}
+          {fromCache && (
+            <div className="bg-blue-600/20 border border-blue-400/30 rounded-lg p-3 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span className="text-blue-200 text-sm">
+                  📦 Dados carregados do cache • Última análise recente
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between mb-6">
             <Button
               onClick={() => navigate('/')}

@@ -57,9 +57,10 @@ FAMOUS_KEYWORDS = [
     "expert", "especialista", "specialist"
 ]
 
-def get_user_id_from_rapidapi(username: str) -> str:
+def get_user_data_from_rapidapi(username: str) -> tuple:
     """
-    Obtém o user_id do Instagram via RapidAPI.
+    Obtém tanto o user_id quanto o profile_info do Instagram via RapidAPI em uma única requisição.
+    Retorna: (user_id, profile_info)
     """
     try:
         headers = {
@@ -75,16 +76,39 @@ def get_user_id_from_rapidapi(username: str) -> str:
         
         if response.status_code == 200:
             data = response.json()
-            print(f"📋 Response data para user_id: {data}")
+            print(f"📋 Response data para user_data: {data}")
+            
             if 'user' in data:
                 user_data = data['user']
-                # Usar 'id' diretamente (conforme API)
+                
+                # Extrair user_id
                 user_id = user_data.get('id')
+                
+                # Montar profile_info completo
+                profile_info = {
+                    'username': user_data.get('username', username),
+                    'full_name': user_data.get('full_name', ''),
+                    'profile_pic_url': user_data.get('profile_pic_url', ''),
+                    'profile_pic_url_hd': user_data.get('profile_pic_url_hd', ''),
+                    'biography': user_data.get('biography', ''),
+                    'is_private': user_data.get('is_private', False),
+                    'is_verified': user_data.get('is_verified', False),
+                    'followers_count': user_data.get('edge_followed_by', {}).get('count', 0),
+                    'following_count': user_data.get('edge_follow', {}).get('count', 0),
+                    'posts_count': user_data.get('edge_owner_to_timeline_media', {}).get('count', 0)
+                }
+                
+                print(f"✅ Dados obtidos com sucesso!")
+                print(f"🆔 User ID: {user_id}")
+                print(f"📊 Seguidores: {profile_info['followers_count']}")
+                print(f"📊 Seguindo: {profile_info['following_count']}")
+                print(f"📊 Posts: {profile_info['posts_count']}")
+                
                 if user_id:
-                    print(f"✅ User ID encontrado: {user_id}")
-                    return str(user_id)
+                    return str(user_id), profile_info
                 else:
-                    print(f"❌ Nenhum ID encontrado no user data: {user_data}")
+                    print(f"❌ Nenhum ID encontrado no user data")
+                    return None, profile_info
             else:
                 print(f"❌ Campo 'user' não encontrado na resposta")
         
@@ -104,20 +128,41 @@ def get_user_id_from_rapidapi(username: str) -> str:
                 if 'user' in data:
                     user_data = data['user']
                     user_id = user_data.get('id')
+                    
+                    profile_info = {
+                        'username': user_data.get('username', username),
+                        'full_name': user_data.get('full_name', ''),
+                        'profile_pic_url': user_data.get('profile_pic_url', ''),
+                        'profile_pic_url_hd': user_data.get('profile_pic_url_hd', ''),
+                        'biography': user_data.get('biography', ''),
+                        'is_private': user_data.get('is_private', False),
+                        'is_verified': user_data.get('is_verified', False),
+                        'followers_count': user_data.get('edge_followed_by', {}).get('count', 0),
+                        'following_count': user_data.get('edge_follow', {}).get('count', 0),
+                        'posts_count': user_data.get('edge_owner_to_timeline_media', {}).get('count', 0)
+                    }
+                    
                     if user_id:
-                        print(f"✅ User ID obtido na retry: {user_id}")
-                        return str(user_id)
+                        print(f"✅ Dados obtidos na retry: {user_id}")
+                        return str(user_id), profile_info
             
             print(f"❌ Rate limit persistente, cancelando scan")
-            return None
+            return None, None
         else:
             print(f"❌ Erro na requisição: {response.status_code}")
             print(f"📄 Response text: {response.text}")
         
-        return None
+        return None, None
     except Exception as e:
-        print(f"❌ Erro ao obter user_id: {e}")
-        return None
+        print(f"❌ Erro ao obter dados do usuário: {e}")
+        return None, None
+
+def get_user_id_from_rapidapi(username: str) -> str:
+    """
+    Obtém apenas o user_id (mantido para compatibilidade).
+    """
+    user_id, _ = get_user_data_from_rapidapi(username)
+    return user_id
 
 def is_famous_profile(username: str, full_name: str = "", biography: str = "") -> bool:
     """
@@ -159,12 +204,19 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     Obtém ghosts com dados do perfil e classificação melhorada.
     """
     print(f"🚀 Iniciando análise para: {username}")
-    print(f"📊 Dados do perfil: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
+    print(f"📊 Dados do perfil recebidos: {profile_info.get('followers_count', 0) if profile_info else 0} seguidores, {profile_info.get('following_count', 0) if profile_info else 0} seguindo")
     
-    # Usar user_id se fornecido, senão obter via API
+    # Usar user_id se fornecido, senão obter via API junto com profile_info atualizado
     if not user_id:
-        print(f"🔍 Obtendo user_id via RapidAPI para: {username}")
-        user_id = get_user_id_from_rapidapi(username)
+        print(f"🔍 Obtendo user_id e profile_info via RapidAPI para: {username}")
+        user_id, fresh_profile_info = get_user_data_from_rapidapi(username)
+        
+        # Se conseguiu obter dados frescos e os dados atuais estão zerados, usar os frescos
+        if fresh_profile_info and (not profile_info or profile_info.get('followers_count', 0) == 0):
+            print(f"🔄 Usando dados frescos da API: {fresh_profile_info.get('followers_count', 0)} seguidores")
+            profile_info = fresh_profile_info
+        elif fresh_profile_info:
+            print(f"📊 Comparando dados - Atual: {profile_info.get('followers_count', 0)}, API: {fresh_profile_info.get('followers_count', 0)}")
     
     if not user_id:
         return {
@@ -178,6 +230,7 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         }
     
     print(f"✅ User ID obtido: {user_id}")
+    print(f"📊 Profile info final: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
     
     # Obter seguidores e seguindo com paginação otimizada
     print(f"📱 Iniciando busca de seguidores...")

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Users, Zap, CheckCircle } from 'lucide-react';
 import { startScan, pollScan } from '../utils/ghosts';
+import { useScanCache } from '../hooks/use-scan-cache';
 
 interface ScanStatus {
   status: 'queued' | 'running' | 'done' | 'error';
@@ -20,6 +21,7 @@ interface ScanStatus {
 const Analyzing = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const { getCachedOrFetchScan, saveScanToCache } = useScanCache();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,25 @@ const Analyzing = () => {
 
     const runAnalysis = async () => {
       try {
+        console.log('🔍 Verificando dados existentes antes de iniciar scan...');
+        
+        // Verificar se já temos dados em cache ou banco
+        const existingScanData = await getCachedOrFetchScan(username);
+        
+        if (existingScanData) {
+          console.log('✅ Dados encontrados! Redirecionando para resultados...');
+          navigate(`/results/${username}`, { 
+            state: { 
+              scanData: existingScanData,
+              username: username,
+              fromCache: true
+            } 
+          });
+          return;
+        }
+        
+        console.log('📭 Nenhum dado encontrado. Iniciando novo scan...');
+        
         // Marca o tempo de início globalmente
         (window as any).scanStartTime = Date.now();
         console.log('🚀 Scan iniciado em:', new Date().toISOString());
@@ -86,48 +107,42 @@ const Analyzing = () => {
           setProgress(prev => Math.max(prev, currentProgress)); // Nunca diminui
         }, 200); // Atualiza a cada 200ms para movimento mais suave
         
-        // Polling do status
+        // Polling do status com backoff progressivo
         let attempts = 0;
         const maxAttempts = 120; // 10 minutos máximo
         
-        const pollInterval = setInterval(async () => {
-          attempts++;
-          
+        const getPollingInterval = (attempt: number) => {
+          // Backoff progressivo: 3s, 3s, 3s, 5s, 5s, 8s, 8s, 10s...
+          if (attempt < 3) return 3000;    // Primeiros 3: 3 segundos
+          if (attempt < 6) return 5000;    // Próximos 3: 5 segundos  
+          if (attempt < 10) return 8000;   // Próximos 4: 8 segundos
+          return 10000;                    // Restante: 10 segundos
+        };
+        
+        const pollWithBackoff = async () => {
           try {
+            attempts++;
+            
+            // Fazer polling
             const status = await pollScan(jobId.job_id);
             setScanStatus(status);
             
-            console.log('Status recebido:', status);
-            console.log('Profile info:', status.profile_info);
-            console.log('Followers count:', status.profile_info?.followers_count);
-            console.log('Count (parasitas):', status.count);
-            console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
+            // Log menos verboso
+            if (attempts % 5 === 0) { // Log a cada 5 tentativas
+              console.log(`🔄 [${attempts}] Status: ${status.status}, Profile: ${status.profile_info?.followers_count || 0} seguidores`);
+            }
             
-            // Atualiza os steps baseado no progresso
-            const currentProgress = Math.floor((Date.now() - startTime) / duration * targetProgress);
-            
-            if (status.status === 'queued') {
-              setCurrentStep(0);
-            } else if (status.status === 'running') {
-              // Steps mais graduais baseados no tempo
-              if (currentProgress < 25) {
-                setCurrentStep(1); // Analisando seguidores
-              } else if (currentProgress < 50) {
-                setCurrentStep(2); // IA processando dados
-              } else {
-                setCurrentStep(3); // Finalizando
-              }
-              
-              // Verifica se os dados do perfil chegaram durante o processo
+            if (status.status === 'running') {
+              // Capturar dados do perfil assim que chegarem
               if (status.profile_info?.followers_count && !realFollowersCount) {
-                console.log('🎯 Dados do perfil detectados durante running:', status.profile_info.followers_count);
+                console.log('🎯 Dados do perfil detectados:', status.profile_info.followers_count);
                 setRealFollowersCount(status.profile_info.followers_count);
               }
               
-              // Verifica se os dados dos parasitas chegaram durante o processo
-              if (status.count !== undefined && !realParasitesCount) {
-                console.log('🎯 Dados dos parasitas detectados durante running:', status.count);
-                setRealParasitesCount(status.count);
+              // Continuar polling com backoff
+              if (attempts < maxAttempts) {
+                const interval = getPollingInterval(attempts);
+                setTimeout(pollWithBackoff, interval);
               }
             } else if (status.status === 'done') {
               setProgress(100);
@@ -140,7 +155,9 @@ const Analyzing = () => {
                 setRealFollowersCount(status.profile_info.followers_count);
               }
               
-
+              // Salvar dados completos no cache
+              console.log('💾 Salvando dados do scan no cache...');
+              saveScanToCache(username, status);
               
               // Aguarda um pouco para mostrar 100%
               setTimeout(() => {
@@ -152,12 +169,10 @@ const Analyzing = () => {
                 });
               }, 1500);
               
-              clearInterval(pollInterval);
             } else if (status.status === 'error') {
               setError(status.error || 'Erro desconhecido');
               setProgress(0);
               clearInterval(progressInterval);
-              clearInterval(pollInterval);
             }
           } catch (err) {
             console.error('Erro ao verificar status:', err);
@@ -165,14 +180,19 @@ const Analyzing = () => {
               setError('Tempo limite excedido. Tente novamente.');
               setProgress(0);
               clearInterval(progressInterval);
-              clearInterval(pollInterval);
+            } else {
+              // Tentar novamente com backoff em caso de erro
+              const interval = getPollingInterval(attempts);
+              setTimeout(pollWithBackoff, interval);
             }
           }
-        }, 1000); // Polling a cada 1 segundo - FIX: remover polling ultra frequente
+        };
+        
+        // Iniciar polling
+        pollWithBackoff();
         
         return () => {
           clearInterval(progressInterval);
-          clearInterval(pollInterval);
         };
         
       } catch (err) {
@@ -183,7 +203,7 @@ const Analyzing = () => {
     };
 
     runAnalysis();
-  }, [username, navigate]);
+  }, [username, navigate, getCachedOrFetchScan, saveScanToCache]);
 
   // Captura dados do perfil assim que chegarem - PRIORIDADE MÁXIMA
   useEffect(() => {

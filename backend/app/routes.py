@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi
+from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi, get_user_data_from_rapidapi
 from .database import get_db, get_or_create_user, save_scan_result, get_user_scan_history, get_cached_user_data, Scan
 from sqlalchemy.orm import Session
 import asyncio
@@ -191,7 +191,12 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
                 profile_info = cached_data['profile_info']
             else:
                 print(f"📱 Obtendo dados do perfil para: {username}")
-                profile_info = get_profile_info(username)
+                user_id, profile_info = get_user_data_from_rapidapi(username)
+                
+                # Se não conseguiu obter user_id, mas tem profile_info, ainda pode prosseguir
+                if not user_id and not profile_info:
+                    print(f"❌ Falha total ao obter dados do Instagram")
+                    profile_info = None
         else:
             # Dados foram reutilizados, terminar função
             return
@@ -212,7 +217,7 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             
             # Obter ghosts com paginação otimizada (5 páginas de 25 usuários)
             print(f"📱 Obtendo ghosts com paginação otimizada...")
-            ghosts_result = await get_ghosts_with_profile(username, profile_info, db_session=db)
+            ghosts_result = await get_ghosts_with_profile(username, profile_info, user_id, db_session=db)
             print(f"📊 Ghosts result: {ghosts_result}")
             
             # Salvar resultado final no banco
@@ -233,79 +238,9 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             print(f"❌ Erro: Não foi possível obter dados do perfil")
             
     except Exception as e:
-        print(f"❌ Erro no scan {job_id}: {e}")
-        import traceback
-        print(f"📋 Traceback completo:")
+        print(f"❌ Erro no scan: {e}")
         traceback.print_exc()
         save_scan_result(db, job_id, username, "error", error_message=str(e))
-
-def get_profile_info(username: str) -> dict:
-    """
-    Obtém informações do perfil via RapidAPI.
-    """
-    try:
-        print(f"🔍 Tentando obter dados do perfil: {username}")
-        
-        headers = {
-            'x-rapidapi-host': os.getenv('RAPIDAPI_HOST', 'instagram-premium-api-2023.p.rapidapi.com'),
-            'x-rapidapi-key': os.getenv('RAPIDAPI_KEY', 'dcbcbd1a45msh9db02af0ee3b5b2p1f2f71jsne81868330f01'),
-            'x-access-key': os.getenv('RAPIDAPI_KEY', 'dcbcbd1a45msh9db02af0ee3b5b2p1f2f71jsne81868330f01')
-        }
-        
-        url = "https://instagram-premium-api-2023.p.rapidapi.com/v1/user/web_profile_info"
-        params = {'username': username}
-        
-        print(f"📡 Fazendo requisição para: {url}")
-        print(f"🔑 Headers: {headers}")
-        print(f"📝 Params: {params}")
-        
-        response = requests.get(url, headers=headers, params=params)
-        
-        print(f"📊 Status code: {response.status_code}")
-        print(f"📄 Response headers: {dict(response.headers)}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"📋 Response data: {data}")
-            
-            if 'user' in data:
-                user_data = data['user']
-                profile_info = {
-                    'username': user_data.get('username', username),
-                    'full_name': user_data.get('full_name', ''),
-                    'profile_pic_url': user_data.get('profile_pic_url', ''),
-                    'profile_pic_url_hd': user_data.get('profile_pic_url_hd', ''),
-                    'biography': user_data.get('biography', ''),
-                    'is_private': user_data.get('is_private', False),
-                    'is_verified': user_data.get('is_verified', False),
-                    'followers_count': user_data.get('edge_followed_by', {}).get('count', 0),
-                    'following_count': user_data.get('edge_follow', {}).get('count', 0),
-                    'posts_count': user_data.get('edge_owner_to_timeline_media', {}).get('count', 0)
-                }
-                
-                print(f"✅ Dados do perfil obtidos com sucesso!")
-                print(f"📊 Seguidores: {profile_info['followers_count']}")
-                print(f"📊 Seguindo: {profile_info['following_count']}")
-                print(f"📊 Posts: {profile_info['posts_count']}")
-                
-                return profile_info
-            else:
-                print(f"❌ Campo 'user' não encontrado na resposta")
-                print(f"📋 Resposta completa: {data}")
-        else:
-            print(f"❌ Erro na requisição: {response.status_code}")
-            print(f"📄 Response text: {response.text}")
-        
-        # Retornar None se a API falhar
-        print(f"❌ Falha na API para: {username}")
-        return None
-        
-    except Exception as e:
-        print(f"❌ Erro ao obter dados do perfil: {e}")
-        print(f"🔄 Retornando None devido ao erro")
-        
-        # Retornar None em caso de erro
-        return None
 
 @router.get("/scan/{job_id}", response_model=StatusResponse)
 def status(job_id: str, db: Session = Depends(get_db)):
