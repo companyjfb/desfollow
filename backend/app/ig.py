@@ -204,8 +204,13 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         "famous_ghosts": famous_ghosts,
         "real_ghosts_count": len(real_ghosts),
         "famous_ghosts_count": len(famous_ghosts),
+        # Contadores dos dados obtidos via paginação (limitado a 5 páginas)
         "followers_count": len(followers),
-        "following_count": len(following)
+        "following_count": len(following),
+        # Contadores reais do perfil (do profile_info da API)
+        "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+        "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+        "all": ghosts  # Para compatibilidade com o frontend
     }
 
 async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]:

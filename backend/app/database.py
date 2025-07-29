@@ -147,6 +147,10 @@ def get_or_create_user(db, username, profile_info=None):
 
 def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_data=None):
     """Salva o resultado de um scan no banco"""
+    print(f"💾 [DATABASE] Salvando scan: job_id={job_id}, status={status}")
+    print(f"💾 [DATABASE] Profile info: {profile_info.get('followers_count', 0) if profile_info else 0} seguidores")
+    print(f"💾 [DATABASE] Ghosts data: {ghosts_data.get('ghosts_count', 0) if ghosts_data else 0} ghosts")
+    
     user = get_or_create_user(db, username, profile_info)
     
     scan = db.query(Scan).filter(Scan.job_id == job_id).first()
@@ -164,16 +168,25 @@ def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_dat
     scan.profile_info = profile_info
     
     if ghosts_data:
-        scan.ghosts_data = ghosts_data.get('all', [])
+        # Corrigir: usar 'ghosts' ao invés de 'all'
+        scan.ghosts_data = ghosts_data.get('ghosts', [])
         scan.real_ghosts = ghosts_data.get('real_ghosts', [])
         scan.famous_ghosts = ghosts_data.get('famous_ghosts', [])
-        scan.ghosts_count = len(ghosts_data.get('all', []))
-        scan.real_ghosts_count = len(ghosts_data.get('real_ghosts', []))
-        scan.famous_ghosts_count = len(ghosts_data.get('famous_ghosts', []))
+        scan.ghosts_count = ghosts_data.get('ghosts_count', len(ghosts_data.get('ghosts', [])))
+        scan.real_ghosts_count = ghosts_data.get('real_ghosts_count', len(ghosts_data.get('real_ghosts', [])))
+        scan.famous_ghosts_count = ghosts_data.get('famous_ghosts_count', len(ghosts_data.get('famous_ghosts', [])))
     
     if profile_info:
         scan.followers_count = profile_info.get('followers_count', 0)
         scan.following_count = profile_info.get('following_count', 0)
+    
+    # Atualizar com contadores reais se disponíveis nos ghosts_data
+    if ghosts_data:
+        # Usar contadores reais do perfil se disponíveis
+        if ghosts_data.get('profile_followers_count'):
+            scan.followers_count = ghosts_data.get('profile_followers_count', scan.followers_count)
+        if ghosts_data.get('profile_following_count'):
+            scan.following_count = ghosts_data.get('profile_following_count', scan.following_count)
     
     scan.updated_at = datetime.utcnow()
     db.commit()
