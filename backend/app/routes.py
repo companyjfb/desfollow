@@ -230,38 +230,16 @@ def get_profile_info(username: str) -> dict:
             print(f"❌ Erro na requisição: {response.status_code}")
             print(f"📄 Response text: {response.text}")
         
-        # Retornar dados simulados se a API falhar
-        print(f"🔄 Retornando dados simulados para: {username}")
-        return {
-            'username': username,
-            'full_name': f'Usuário {username}',
-            'profile_pic_url': '',
-            'profile_pic_url_hd': '',
-            'biography': '',
-            'is_private': False,
-            'is_verified': False,
-            'followers_count': 150,  # Dados simulados
-            'following_count': 200,  # Dados simulados
-            'posts_count': 50        # Dados simulados
-        }
+        # Retornar None se a API falhar
+        print(f"❌ Falha na API para: {username}")
+        return None
         
     except Exception as e:
         print(f"❌ Erro ao obter dados do perfil: {e}")
-        print(f"🔄 Retornando dados simulados devido ao erro")
+        print(f"🔄 Retornando None devido ao erro")
         
-        # Retornar dados simulados em caso de erro
-        return {
-            'username': username,
-            'full_name': f'Usuário {username}',
-            'profile_pic_url': '',
-            'profile_pic_url_hd': '',
-            'biography': '',
-            'is_private': False,
-            'is_verified': False,
-            'followers_count': 150,  # Dados simulados
-            'following_count': 200,  # Dados simulados
-            'posts_count': 50        # Dados simulados
-        }
+        # Retornar None em caso de erro
+        return None
 
 @router.get("/scan/{job_id}", response_model=StatusResponse)
 def status(job_id: str, db: Session = Depends(get_db)):

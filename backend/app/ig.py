@@ -75,8 +75,21 @@ def get_user_id_from_rapidapi(username: str) -> str:
         
         if response.status_code == 200:
             data = response.json()
-            if 'user' in data and 'pk' in data['user']:
-                return str(data['user']['pk'])
+            print(f"📋 Response data para user_id: {data}")
+            if 'user' in data:
+                user_data = data['user']
+                # Tentar 'pk' primeiro, depois 'id'
+                user_id = user_data.get('pk') or user_data.get('id')
+                if user_id:
+                    print(f"✅ User ID encontrado: {user_id}")
+                    return str(user_id)
+                else:
+                    print(f"❌ Nenhum ID encontrado no user data: {user_data}")
+            else:
+                print(f"❌ Campo 'user' não encontrado na resposta")
+        
+        print(f"❌ Erro na requisição: {response.status_code}")
+        print(f"📄 Response text: {response.text}")
         
         return None
     except Exception as e:
