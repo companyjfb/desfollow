@@ -1,0 +1,16 @@
+[Unit]
+Description=Desfollow Limpeza Automática de Jobs
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/desfollow
+ExecStart=/usr/bin/python3 /root/desfollow/sistema_limpeza_automatica.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target 
