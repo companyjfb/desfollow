@@ -81,7 +81,7 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(
     username = username.lstrip("@")
     print(f"🧹 Username limpo: {username}")
     
-    # Verificar se já existe scan recente no banco (últimas 24h)
+    # Verificar se existe scan recente no banco (últimas 24h) - APENAS PARA LOG
     from datetime import datetime, timedelta
     recent_scans = db.query(Scan).filter(
         Scan.username == username,
@@ -92,9 +92,12 @@ async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(
     if recent_scans:
         recent_scan = recent_scans[0]
         print(f"📋 Scan recente encontrado no banco: {recent_scan.job_id}")
-        
-        # Retornar job_id do scan existente
-        return ScanResponse(job_id=recent_scan.job_id)
+        print(f"📊 Dados disponíveis para reutilização: {recent_scan.ghosts_count} ghosts")
+    else:
+        print(f"📋 Nenhum scan recente encontrado, será feito novo scan")
+    
+    # SEMPRE criar novo job_id para cada scan
+    print(f"🆕 Criando novo job_id para scan atual")
     
     job_id = str(uuid4())
     set_job(job_id, {"status": "queued"})
@@ -121,14 +124,49 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             "username": username
         })
         
-        # Verificar cache do usuário
-        cached_data = get_cached_user_data(db, username)
-        if cached_data:
-            print(f"📋 Dados em cache encontrados para: {username}")
-            profile_info = cached_data['profile_info']
+        # Verificar dados recentes no banco (últimas 2 horas)
+        recent_scan = db.query(Scan).filter(
+            Scan.username == username,
+            Scan.status == "done",
+            Scan.updated_at >= datetime.utcnow() - timedelta(hours=2)
+        ).order_by(Scan.updated_at.desc()).first()
+        
+        if recent_scan and recent_scan.ghosts_data:
+            print(f"📋 Dados recentes encontrados no banco (últimas 2h)")
+            print(f"📊 Ghosts disponíveis: {len(recent_scan.ghosts_data) if recent_scan.ghosts_data else 0}")
+            
+            # Reutilizar dados do banco
+            profile_info = recent_scan.profile_info
+            ghosts_result = {
+                "ghosts": recent_scan.ghosts_data or [],
+                "ghosts_count": recent_scan.ghosts_count or 0,
+                "real_ghosts": recent_scan.real_ghosts or [],
+                "famous_ghosts": recent_scan.famous_ghosts or [],
+                "real_ghosts_count": recent_scan.real_ghosts_count or 0,
+                "famous_ghosts_count": recent_scan.famous_ghosts_count or 0,
+                "followers_count": recent_scan.followers_count or 0,
+                "following_count": recent_scan.following_count or 0
+            }
+            
+            print(f"✅ Reutilizando dados do banco!")
+            print(f"📊 Estatísticas reutilizadas:")
+            print(f"   - Seguidores: {ghosts_result.get('followers_count', 0)}")
+            print(f"   - Seguindo: {ghosts_result.get('following_count', 0)}")
+            print(f"   - Ghosts totais: {ghosts_result.get('ghosts_count', 0)}")
+            
+            # Salvar resultado reutilizado
+            save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
+            
         else:
-            print(f"📱 Obtendo dados do perfil para: {username}")
-            profile_info = get_profile_info(username)
+            print(f"📱 Obtendo dados frescos do Instagram...")
+            # Verificar cache do usuário
+            cached_data = get_cached_user_data(db, username)
+            if cached_data:
+                print(f"📋 Dados em cache encontrados para: {username}")
+                profile_info = cached_data['profile_info']
+            else:
+                print(f"📱 Obtendo dados do perfil para: {username}")
+                profile_info = get_profile_info(username)
         
         print(f"📊 Profile info obtido: {profile_info}")
         
