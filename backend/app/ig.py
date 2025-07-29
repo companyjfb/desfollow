@@ -88,8 +88,31 @@ def get_user_id_from_rapidapi(username: str) -> str:
             else:
                 print(f"❌ Campo 'user' não encontrado na resposta")
         
-        print(f"❌ Erro na requisição: {response.status_code}")
-        print(f"📄 Response text: {response.text}")
+        if response.status_code == 429:
+            print(f"🔄 Rate limit atingido (429) - Aguardando 60 segundos...")
+            print(f"📄 Response: {response.text}")
+            
+            # Aguardar 60 segundos e tentar novamente UMA vez
+            import time
+            time.sleep(60)
+            
+            print(f"🔄 Tentando novamente após rate limit...")
+            retry_response = requests.get(url, headers=headers, params=params)
+            
+            if retry_response.status_code == 200:
+                data = retry_response.json()
+                if 'user' in data:
+                    user_data = data['user']
+                    user_id = user_data.get('id')
+                    if user_id:
+                        print(f"✅ User ID obtido na retry: {user_id}")
+                        return str(user_id)
+            
+            print(f"❌ Rate limit persistente, cancelando scan")
+            return None
+        else:
+            print(f"❌ Erro na requisição: {response.status_code}")
+            print(f"📄 Response text: {response.text}")
         
         return None
     except Exception as e:

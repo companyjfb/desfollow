@@ -168,7 +168,7 @@ const Analyzing = () => {
               clearInterval(pollInterval);
             }
           }
-        }, attempts < 50 ? 50 : 1000); // Polling ULTRA frequente nos primeiros 50 segundos (50ms)
+        }, 1000); // Polling a cada 1 segundo - FIX: remover polling ultra frequente
         
         return () => {
           clearInterval(progressInterval);

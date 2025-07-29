@@ -133,31 +133,50 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             Scan.updated_at >= datetime.utcnow() - timedelta(hours=2)
         ).order_by(Scan.updated_at.desc()).first()
         
+        # Verificar se dados são válidos antes de reutilizar
         if recent_scan and recent_scan.ghosts_data:
-            print(f"📋 Dados recentes encontrados no banco (últimas 2h)")
-            print(f"📊 Ghosts disponíveis: {len(recent_scan.ghosts_data) if recent_scan.ghosts_data else 0}")
+            # Verificar se dados não estão zerados/inválidos
+            followers_count = recent_scan.followers_count or 0
+            profile_followers = recent_scan.profile_info.get('followers_count', 0) if recent_scan.profile_info else 0
+            ghosts_count = recent_scan.ghosts_count or 0
             
-            # Reutilizar dados do banco
-            profile_info = recent_scan.profile_info
-            ghosts_result = {
-                "ghosts": recent_scan.ghosts_data or [],
-                "ghosts_count": recent_scan.ghosts_count or 0,
-                "real_ghosts": recent_scan.real_ghosts or [],
-                "famous_ghosts": recent_scan.famous_ghosts or [],
-                "real_ghosts_count": recent_scan.real_ghosts_count or 0,
-                "famous_ghosts_count": recent_scan.famous_ghosts_count or 0,
-                "followers_count": recent_scan.followers_count or 0,
-                "following_count": recent_scan.following_count or 0
-            }
+            is_data_valid = (
+                profile_followers > 0 or  # Profile tem seguidores válidos
+                (followers_count > 0 and ghosts_count >= 0)  # Ou dados de scan válidos
+            )
             
-            print(f"✅ Reutilizando dados do banco!")
-            print(f"📊 Estatísticas reutilizadas:")
-            print(f"   - Seguidores: {ghosts_result.get('followers_count', 0)}")
-            print(f"   - Seguindo: {ghosts_result.get('following_count', 0)}")
-            print(f"   - Ghosts totais: {ghosts_result.get('ghosts_count', 0)}")
-            
-            # Salvar resultado reutilizado
-            save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
+            if is_data_valid:
+                print(f"📋 Dados recentes VÁLIDOS encontrados no banco (últimas 2h)")
+                print(f"📊 Seguidores perfil: {profile_followers}, Ghosts: {ghosts_count}")
+                
+                # Reutilizar dados do banco
+                profile_info = recent_scan.profile_info
+                ghosts_result = {
+                    "ghosts": recent_scan.ghosts_data or [],
+                    "ghosts_count": recent_scan.ghosts_count or 0,
+                    "real_ghosts": recent_scan.real_ghosts or [],
+                    "famous_ghosts": recent_scan.famous_ghosts or [],
+                    "real_ghosts_count": recent_scan.real_ghosts_count or 0,
+                    "famous_ghosts_count": recent_scan.famous_ghosts_count or 0,
+                    "followers_count": recent_scan.followers_count or 0,
+                    "following_count": recent_scan.following_count or 0
+                }
+                
+                print(f"✅ Reutilizando dados VÁLIDOS do banco!")
+                print(f"📊 Estatísticas reutilizadas:")
+                print(f"   - Seguidores: {ghosts_result.get('followers_count', 0)}")
+                print(f"   - Seguindo: {ghosts_result.get('following_count', 0)}")
+                print(f"   - Ghosts totais: {ghosts_result.get('ghosts_count', 0)}")
+                
+                # Salvar resultado reutilizado
+                save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
+            else:
+                print(f"⚠️ Dados recentes INVÁLIDOS encontrados (zerados)")
+                print(f"📊 Seguidores perfil: {profile_followers}, Ghosts: {ghosts_count}")
+                print(f"🔄 Forçando scan novo para obter dados válidos...")
+                
+                # Continuar para scan novo
+                recent_scan = None
             
         else:
             print(f"📱 Obtendo dados frescos do Instagram...")
