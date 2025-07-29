@@ -2,7 +2,8 @@ import json
 import os
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi
 from .database import get_db, get_or_create_user, save_scan_result, get_user_scan_history, get_cached_user_data, Scan
 from sqlalchemy.orm import Session
@@ -54,16 +55,16 @@ class ScanResponse(BaseModel):
 
 class StatusResponse(BaseModel):
     status: str
-    count: int = None
-    sample: list[str] = None
-    all: list[str] = None
-    ghosts_details: list[dict] = None
-    real_ghosts: list[dict] = None
-    famous_ghosts: list[dict] = None
-    real_ghosts_count: int = None
-    famous_ghosts_count: int = None
-    profile_info: dict = None
-    error: str = None
+    count: Optional[int] = None
+    sample: Optional[List[str]] = None
+    all: Optional[List[str]] = None
+    ghosts_details: Optional[List[Dict[str, Any]]] = None
+    real_ghosts: Optional[List[Dict[str, Any]]] = None
+    famous_ghosts: Optional[List[Dict[str, Any]]] = None
+    real_ghosts_count: Optional[int] = None
+    famous_ghosts_count: Optional[int] = None
+    profile_info: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
 
 @router.post("/scan", response_model=ScanResponse)
 async def scan(payload: ScanRequest, bg: BackgroundTasks, db: Session = Depends(get_db)):
