@@ -252,6 +252,12 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     try:
         followers = await get_followers_with_new_api(user_id, db_session)
         print(f"✅ FASE 1 CONCLUÍDA: {len(followers)} seguidores capturados")
+        
+        # Atualizar progresso no banco para evitar timeout
+        if db_session:
+            from .database import update_scan_progress
+            update_scan_progress(db_session, username, "followers_complete", len(followers))
+            
     except Exception as e:
         error_msg = f"ERRO ao buscar seguidores: {str(e)}"
         print(f"❌ {error_msg}")
@@ -275,6 +281,12 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     try:
         following = await get_following_with_new_api(user_id, db_session)
         print(f"✅ FASE 2 CONCLUÍDA: {len(following)} seguindo capturados")
+        
+        # Atualizar progresso no banco para evitar timeout
+        if db_session:
+            from .database import update_scan_progress
+            update_scan_progress(db_session, username, "following_complete", len(following))
+            
     except Exception as e:
         error_msg = f"ERRO ao buscar seguindo: {str(e)}"
         print(f"❌ {error_msg}")

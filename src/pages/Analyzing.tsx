@@ -112,11 +112,8 @@ const Analyzing = () => {
         const maxAttempts = 120; // 10 minutos máximo
         
         const getPollingInterval = (attempt: number) => {
-          // 🔧 Backoff otimizado: 10s, 15s, 20s, 30s...
-          if (attempt < 2) return 10000;   // Primeiros 2: 10 segundos
-          if (attempt < 4) return 15000;   // Próximos 2: 15 segundos  
-          if (attempt < 6) return 20000;   // Próximos 2: 20 segundos
-          return 30000;                    // Restante: 30 segundos
+          // 🔧 Polling otimizado: máximo 1 requisição a cada 10 segundos
+          return 10000; // Sempre 10 segundos
         };
         
         const pollWithBackoff = async () => {

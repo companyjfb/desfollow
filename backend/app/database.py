@@ -272,4 +272,30 @@ def get_cached_user_data(db, username):
         else:
             print(f"⚠️ Cache com dados zerados encontrado para {username} - ignorando")
     
-    return None 
+    return None
+
+def update_scan_progress(db, username, phase, count):
+    """
+    Atualiza o progresso do scan para evitar timeouts.
+    """
+    try:
+        # Buscar scan mais recente para o usuário
+        scan = db.query(Scan).filter(
+            Scan.username == username,
+            Scan.status == "running"
+        ).order_by(Scan.created_at.desc()).first()
+        
+        if scan:
+            if phase == "followers_complete":
+                scan.followers_count = count
+                print(f"📊 Progresso followers atualizado: {count} para {username}")
+            elif phase == "following_complete":
+                scan.following_count = count
+                print(f"📊 Progresso following atualizado: {count} para {username}")
+            
+            scan.updated_at = datetime.utcnow()
+            db.commit()
+            
+    except Exception as e:
+        print(f"❌ Erro ao atualizar progresso do scan: {e}")
+        db.rollback() 
