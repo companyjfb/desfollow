@@ -453,18 +453,12 @@ const Analyzing = () => {
           </div>
 
           {/* Stats */}
-          <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="mt-8">
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">
-                {simulatedParasites}
-              </div>
-              <div className="text-white/70 text-xs">Parasitas encontrados</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">
+              <div className="text-3xl font-bold text-white">
                 {simulatedFollowers}
               </div>
-              <div className="text-white/70 text-xs">Seguidores do usuário</div>
+              <div className="text-white/70 text-sm">Seguidores analisados</div>
             </div>
           </div>
 

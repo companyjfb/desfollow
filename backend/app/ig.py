@@ -253,10 +253,34 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         followers = await get_followers_with_new_api(user_id, db_session)
         print(f"✅ FASE 1 CONCLUÍDA: {len(followers)} seguidores capturados")
         
-        # Atualizar progresso no banco para evitar timeout
+        # Salvar dados da primeira API no banco
         if db_session:
-            from .database import update_scan_progress
+            from .database import update_scan_progress, save_scan_result
             update_scan_progress(db_session, username, "followers_complete", len(followers))
+            
+            # Salvar dados intermediários com contagem de seguidores
+            intermediate_data = {
+                "followers_count": len(followers),
+                "following_count": 0,
+                "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+                "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+                "ghosts": [],
+                "ghosts_count": 0,
+                "real_ghosts": [],
+                "famous_ghosts": [],
+                "real_ghosts_count": 0,
+                "famous_ghosts_count": 0
+            }
+            
+            # Atualizar scan com dados intermediários
+            save_scan_result(
+                db_session, 
+                f"intermediate_{username}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}", 
+                username, 
+                "running", 
+                profile_info, 
+                intermediate_data
+            )
             
     except Exception as e:
         error_msg = f"ERRO ao buscar seguidores: {str(e)}"
