@@ -29,13 +29,17 @@ export interface ScanResponse {
 export interface StatusResponse {
   status: 'queued' | 'running' | 'done' | 'error';
   count?: number;
-  sample?: string[];
-  all?: string[];
+  sample?: any[];
+  all?: any[];
   ghosts_details?: any[];
   real_ghosts?: any[];
   famous_ghosts?: any[];
   real_ghosts_count?: number;
   famous_ghosts_count?: number;
+  followers_count?: number;  // Quantos seguidores foram analisados
+  following_count?: number;  // Quantos seguindo foram analisados
+  profile_followers_count?: number;  // Total de seguidores do perfil
+  profile_following_count?: number;  // Total de seguindo do perfil
   profile_info?: any;
   error?: string;
 }

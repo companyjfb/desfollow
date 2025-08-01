@@ -37,6 +37,10 @@ interface ScanData {
   famous_ghosts: GhostUser[];
   real_ghosts_count: number;
   famous_ghosts_count: number;
+  followers_count: number;  // Quantos seguidores analisamos
+  following_count: number;  // Quantos seguindo analisamos
+  profile_followers_count: number;  // Total de seguidores do perfil
+  profile_following_count: number;  // Total de seguindo do perfil
   profile_info: ProfileInfo;
 }
 
@@ -184,20 +188,24 @@ const Results = () => {
   };
 
   // ✅ MOSTRAR VALORES REAIS (sem multiplicação falsa)
-  const rawCount = scanData?.count || scanData?.ghosts_count || 0;
+  const rawCount = scanData?.count || 0;
   const totalGhosts = rawCount; // Mostrar valor real dos parasitas
   
   console.log('✅ DADOS REAIS FRONTEND:', { 
     rawCount, 
     totalGhosts, 
     scanDataCount: scanData?.count,
-    scanDataGhostsCount: scanData?.ghosts_count 
+    followersCount: scanData?.followers_count,
+    followingCount: scanData?.following_count
   });
   const realGhostsCount = scanData?.real_ghosts_count || 6;
   const famousGhostsCount = scanData?.famous_ghosts_count || 22;
-  const followersCount = scanData?.profile_info?.followers_count || 0;
-  const lossRate = scanData?.profile_info?.followers_count ? 
-    Math.round((totalGhosts / scanData.profile_info.followers_count) * 100) : 6;
+  const followersCount = scanData?.followers_count || 0;  // Dados analisados
+  const followingCount = scanData?.following_count || 0;  // Dados analisados
+  const profileFollowersCount = scanData?.profile_followers_count || scanData?.profile_info?.followers_count || 0;  // Total do perfil
+  const profileFollowingCount = scanData?.profile_following_count || scanData?.profile_info?.following_count || 0;  // Total do perfil
+  const lossRate = profileFollowersCount ? 
+    Math.round((totalGhosts / profileFollowersCount) * 100) : 6;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 p-4">
@@ -247,8 +255,8 @@ const Results = () => {
                   <div className="text-white font-semibold text-lg">{scanData.profile_info.full_name || username}</div>
                   <div className="text-gray-300 text-sm">@{scanData.profile_info.username || username}</div>
                   <div className="flex items-center space-x-4 text-gray-400 text-xs mt-1">
-                    <span>{scanData.profile_info.followers_count || 0} seguidores</span>
-                    <span>{scanData.profile_info.following_count || 0} seguindo</span>
+                    <span>{profileFollowersCount} seguidores</span>
+                    <span>{profileFollowingCount} seguindo</span>
                     <span>{scanData.profile_info.posts_count || 0} posts</span>
                   </div>
                 </div>

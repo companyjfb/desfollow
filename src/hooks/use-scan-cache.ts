@@ -3,26 +3,34 @@ import { useState, useEffect } from 'react';
 interface ScanData {
   status: string;
   count: number;
-  sample: string[];
-  all: string[];
+  sample: any[];
+  all: any[];
   ghosts_details: any[];
   real_ghosts: any[];
   famous_ghosts: any[];
   real_ghosts_count: number;
   famous_ghosts_count: number;
+  followers_count: number;
+  following_count: number;
+  profile_followers_count: number;
+  profile_following_count: number;
   profile_info: any;
 }
 
 interface StatusResponse {
   status: string;
   count?: number;
-  sample?: string[];
-  all?: string[];
+  sample?: any[];
+  all?: any[];
   ghosts_details?: any[];
   real_ghosts?: any[];
   famous_ghosts?: any[];
   real_ghosts_count?: number;
   famous_ghosts_count?: number;
+  followers_count?: number;
+  following_count?: number;
+  profile_followers_count?: number;
+  profile_following_count?: number;
   profile_info?: any;
   error?: string;
 }
@@ -55,6 +63,10 @@ export const useScanCache = () => {
       famous_ghosts: response.famous_ghosts || [],
       real_ghosts_count: response.real_ghosts_count || 0,
       famous_ghosts_count: response.famous_ghosts_count || 0,
+      followers_count: response.followers_count || 0,
+      following_count: response.following_count || 0,
+      profile_followers_count: response.profile_followers_count || 0,
+      profile_following_count: response.profile_following_count || 0,
       profile_info: response.profile_info || {}
     };
   };
@@ -112,7 +124,26 @@ export const useScanCache = () => {
     try {
       console.log(`🔍 Buscando histórico no banco para: @${username}`);
       
-      const response = await fetch(`/api/user/${username}/history`);
+      // Usa HTTPS para a API quando disponível, fallback para HTTP
+      const getApiBaseUrl = () => {
+        const host = window.location.hostname;
+        
+        // Para produção, tenta HTTPS primeiro, depois HTTP
+        if (host === 'desfollow.com.br' || host === 'www.desfollow.com.br') {
+          return `https://api.desfollow.com.br/api`;
+        }
+        
+        // Para api.desfollow.com.br, usa HTTPS
+        if (host === 'api.desfollow.com.br') {
+          return `https://api.desfollow.com.br/api`;
+        }
+        
+        // Para outros domínios, tenta HTTPS
+        return `https://${host}/api`;
+      };
+
+      const API_BASE_URL = getApiBaseUrl();
+      const response = await fetch(`${API_BASE_URL}/user/${username}/history`);
       
       if (!response.ok) {
         console.log(`📭 Nenhum histórico encontrado no banco para: @${username}`);
@@ -148,6 +179,10 @@ export const useScanCache = () => {
         famous_ghosts: latestScan.famous_ghosts || [],
         real_ghosts_count: latestScan.real_ghosts_count || 0,
         famous_ghosts_count: latestScan.famous_ghosts_count || 0,
+        followers_count: latestScan.followers_count || 0,
+        following_count: latestScan.following_count || 0,
+        profile_followers_count: latestScan.profile_followers_count || 0,
+        profile_following_count: latestScan.profile_following_count || 0,
         profile_info: latestScan.profile_info || {}
       };
 
