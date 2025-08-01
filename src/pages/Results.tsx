@@ -204,17 +204,6 @@ const Results = () => {
         
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl mb-8">
-          {/* Cache indicator */}
-          {fromCache && (
-            <div className="bg-blue-600/20 border border-blue-400/30 rounded-lg p-3 mb-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className="text-blue-200 text-sm">
-                  📦 Dados carregados do cache • Última análise recente
-                </span>
-              </div>
-            </div>
-          )}
           
           <div className="flex items-center justify-between mb-6">
             <Button
