@@ -10,6 +10,7 @@ import time
 from typing import Dict, Any
 
 # URLs de teste
+BACKEND_BASE_URL = "https://api.desfollow.com.br"
 API_BASE_URL = "https://api.desfollow.com.br/api"
 FRONTEND_BASE_URL = "https://desfollow.com.br"
 
@@ -22,7 +23,7 @@ def test_backend_health():
     print("=" * 50)
     
     try:
-        response = requests.get(f"{API_BASE_URL.replace('/api', '')}/health")
+        response = requests.get(f"{BACKEND_BASE_URL}/health")
         print(f"📊 Status Code: {response.status_code}")
         
         if response.status_code == 200:
@@ -174,6 +175,7 @@ def main():
     """Executa todos os testes"""
     print("🧪 TESTE COMPLETO DE COMUNICAÇÃO FRONTEND-BACKEND")
     print("=" * 60)
+    print(f"🖥️  Backend URL: {BACKEND_BASE_URL}")
     print(f"🎯 API Base URL: {API_BASE_URL}")
     print(f"🌐 Frontend URL: {FRONTEND_BASE_URL}")
     print(f"👤 Username de teste: {TEST_USERNAME}")
