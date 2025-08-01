@@ -23,7 +23,7 @@ def test_backend_health():
     print("=" * 50)
     
     try:
-        response = requests.get(f"{BACKEND_BASE_URL}/health")
+        response = requests.get(f"{API_BASE_URL}/health")
         print(f"📊 Status Code: {response.status_code}")
         
         if response.status_code == 200:
