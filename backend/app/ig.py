@@ -291,21 +291,21 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
 
 async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
-    Obtém lista de seguidores com paginação otimizada (5 páginas de 25 usuários).
+    Obtém lista de seguidores com paginação correta usando último ID da página anterior.
     """
     print(f"📱 [FOLLOWERS] Iniciando busca de seguidores para user_id: {user_id}")
-    print(f"📱 [FOLLOWERS] Configuração: {5} páginas máximas, ~25 usuários por página")
+    print(f"📱 [FOLLOWERS] Configuração: Máximo 10 páginas, ~25 usuários por página")
     
     all_followers = []
     page = 1
-    max_pages = 5  # Limite de 5 páginas
+    max_pages = 10  # Aumentado para 10 páginas com paginação correta
     total_new_users = 0
+    max_id = None  # Controle de paginação real
     
     print(f"🔄 [FOLLOWERS] Loop de paginação iniciado (páginas 1-{max_pages})")
     
     while page <= max_pages:
-        # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
-        max_id = None if page == 1 else (page - 1) * 25
+        # Paginação correta: usar último ID da página anterior
         
         print(f"\n📄 [FOLLOWERS] === PÁGINA {page}/{max_pages} ===")
         print(f"🔢 [FOLLOWERS] max_id calculado: {max_id} (baseado em página {page})")
@@ -402,19 +402,28 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
                 print(f"   🔄 {duplicates} duplicados ignorados")
                 print(f"   📈 Total acumulado: {len(all_followers)} followers")
                 
-                # Verificar se há mais páginas - só para se retornou 0 usuários ou muito poucos
+                # Verificar se há mais páginas
                 print(f"🔢 [FOLLOWERS] Controle de paginação: {len(users)} usuários recebidos")
                 if len(users) == 0:
                     print(f"🏁 [FOLLOWERS] Última página alcançada - Nenhum usuário retornado")
                     break
-                elif len(users) < 10 and page > 1:
-                    print(f"🏁 [FOLLOWERS] Possível última página - Poucos usuários ({len(users)}) na página {page}")
-                    # Continue para mais uma página para ter certeza
                 elif len(users) < 5:
                     print(f"🏁 [FOLLOWERS] Última página alcançada - Muito poucos usuários ({len(users)})")
                     break
                 
-                # max_id é calculado automaticamente no início do loop baseado na página
+                # 🔥 CORREÇÃO CRÍTICA: Capturar último ID para próxima página
+                if users and len(users) > 0:
+                    ultimo_user = users[-1]
+                    novo_max_id = ultimo_user.get('id')
+                    if novo_max_id:
+                        max_id = str(novo_max_id)
+                        print(f"🔢 [FOLLOWERS] Último ID capturado para próxima página: {max_id}")
+                    else:
+                        print(f"⚠️ [FOLLOWERS] Não foi possível obter ID do último usuário")
+                        break
+                else:
+                    break
+                
                 page += 1
                 print(f"⏭️ [FOLLOWERS] Avançando para página {page} em 1 segundo...")
                 await asyncio.sleep(1)  # Rate limiting
@@ -438,21 +447,21 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
 
 async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
-    Obtém lista de seguindo com paginação otimizada (5 páginas de 25 usuários).
+    Obtém lista de seguindo com paginação correta usando último ID da página anterior.
     """
     print(f"👥 [FOLLOWING] Iniciando busca de seguindo para user_id: {user_id}")
-    print(f"👥 [FOLLOWING] Configuração: {5} páginas máximas, ~25 usuários por página")
+    print(f"👥 [FOLLOWING] Configuração: Máximo 10 páginas, ~25 usuários por página")
     
     all_following = []
     page = 1
-    max_pages = 5  # Limite de 5 páginas
+    max_pages = 10  # Aumentado para 10 páginas com paginação correta
     total_new_users = 0
+    max_id = None  # Controle de paginação real
     
     print(f"🔄 [FOLLOWING] Loop de paginação iniciado (páginas 1-{max_pages})")
     
     while page <= max_pages:
-        # Lógica de paginação: primeira página sem max_id, depois 25, 50, 75...
-        max_id = None if page == 1 else (page - 1) * 25
+        # Paginação correta: usar último ID da página anterior
         
         print(f"\n👥 [FOLLOWING] === PÁGINA {page}/{max_pages} ===")
         print(f"🔢 [FOLLOWING] max_id calculado: {max_id} (baseado em página {page})")
@@ -522,20 +531,30 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
                 
                 print(f"✅ Página {page}: {len(new_users)} seguindo encontrados ({page_new_users} novos no banco)")
                 
-                # Verificar se há mais páginas - só para se retornou 0 usuários ou muito poucos
+                # Verificar se há mais páginas
                 print(f"🔢 [FOLLOWING] Controle de paginação: {len(users)} usuários recebidos")
                 if len(users) == 0:
                     print(f"🏁 [FOLLOWING] Última página alcançada - Nenhum usuário retornado")
                     break
-                elif len(users) < 10 and page > 1:
-                    print(f"🏁 [FOLLOWING] Possível última página - Poucos usuários ({len(users)}) na página {page}")
-                    # Continue para mais uma página para ter certeza
                 elif len(users) < 5:
                     print(f"🏁 [FOLLOWING] Última página alcançada - Muito poucos usuários ({len(users)})")
                     break
                 
-                # max_id é calculado automaticamente no início do loop baseado na página
+                # 🔥 CORREÇÃO CRÍTICA: Capturar último ID para próxima página
+                if users and len(users) > 0:
+                    ultimo_user = users[-1]
+                    novo_max_id = ultimo_user.get('id')
+                    if novo_max_id:
+                        max_id = str(novo_max_id)
+                        print(f"🔢 [FOLLOWING] Último ID capturado para próxima página: {max_id}")
+                    else:
+                        print(f"⚠️ [FOLLOWING] Não foi possível obter ID do último usuário")
+                        break
+                else:
+                    break
+                
                 page += 1
+                print(f"⏭️ [FOLLOWING] Avançando para página {page} em 1 segundo...")
                 await asyncio.sleep(1)  # Rate limiting
             else:
                 print(f"❌ Erro na API: {response.status_code}")
