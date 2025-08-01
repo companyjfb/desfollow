@@ -81,26 +81,40 @@ echo "✅ CORS removido do backend"
 echo ""
 echo "📋 Criando configuração nginx com CORS HTTPS fixo..."
 
-# Configuração nginx com CORS HTTPS fixo (sem SSL no frontend)
+# Configuração nginx com CORS HTTPS fixo (frontend e API em HTTPS)
 sudo tee /etc/nginx/sites-available/desfollow > /dev/null << 'EOF'
 # ========================================
 # CONFIGURAÇÃO NGINX - CORS HTTPS FIXO SEM CONFLITO
 # ========================================
-# Frontend: desfollow.com.br + www.desfollow.com.br (HTTP - SSL via Hostinger)
+# Frontend: desfollow.com.br + www.desfollow.com.br (HTTPS - SSL via Hostinger)
 # API: api.desfollow.com.br (HTTPS)
 # CORS: Apenas nginx gerencia (sem backend)
 # ========================================
 
-# FRONTEND HTTP - DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
+# FRONTEND HTTPS - DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
 server {
-    listen 80;
+    listen 443 ssl http2;
     server_name desfollow.com.br;
+    
+    # SSL gerenciado pela Hostinger (não verificar certificados)
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+    
+    # Configurações SSL seguras
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # Headers de segurança
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     
     root /var/www/html;
     index index.html;
     
-    access_log /var/log/nginx/frontend_access.log;
-    error_log /var/log/nginx/frontend_error.log;
+    access_log /var/log/nginx/frontend_ssl_access.log;
+    error_log /var/log/nginx/frontend_ssl_error.log;
     
     # Cache para assets estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
@@ -129,21 +143,35 @@ server {
     # Health check
     location /health {
         access_log off;
-        return 200 "Frontend HTTP OK\n";
+        return 200 "Frontend HTTPS OK\n";
         add_header Content-Type text/plain;
     }
 }
 
-# FRONTEND HTTP - WWW.DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
+# FRONTEND HTTPS - WWW.DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
 server {
-    listen 80;
+    listen 443 ssl http2;
     server_name www.desfollow.com.br;
+    
+    # SSL gerenciado pela Hostinger (não verificar certificados)
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+    
+    # Configurações SSL seguras
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # Headers de segurança
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     
     root /var/www/html;
     index index.html;
     
-    access_log /var/log/nginx/frontend_www_access.log;
-    error_log /var/log/nginx/frontend_www_error.log;
+    access_log /var/log/nginx/frontend_www_ssl_access.log;
+    error_log /var/log/nginx/frontend_www_ssl_error.log;
     
     # Cache para assets estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
@@ -172,9 +200,16 @@ server {
     # Health check
     location /health {
         access_log off;
-        return 200 "Frontend WWW HTTP OK\n";
+        return 200 "Frontend WWW HTTPS OK\n";
         add_header Content-Type text/plain;
     }
+}
+
+# FRONTEND HTTP -> HTTPS REDIRECT
+server {
+    listen 80;
+    server_name desfollow.com.br www.desfollow.com.br;
+    return 301 https://$server_name$request_uri;
 }
 
 # API HTTP -> HTTPS REDIRECT
@@ -279,11 +314,15 @@ else
 fi
 
 echo ""
-echo "📋 Reiniciando backend usando systemctl..."
+echo "📋 Verificando backend atual..."
+if pgrep -f "uvicorn\|gunicorn" > /dev/null; then
+    echo "📋 Backend já está rodando, parando..."
+    pkill -f "uvicorn\|gunicorn"
+    sleep 2
+fi
 
-# Parar processos antigos
-pkill -f "uvicorn\|gunicorn"
-sleep 2
+echo ""
+echo "📋 Tentando iniciar backend..."
 
 # Verificar se existe serviço systemd
 if systemctl list-unit-files | grep -q "desfollow"; then
@@ -295,13 +334,18 @@ if systemctl list-unit-files | grep -q "desfollow"; then
         echo "✅ Backend reiniciado via systemctl"
     else
         echo "❌ Erro ao reiniciar via systemctl"
-        sudo systemctl status desfollow
-        exit 1
+        echo "📋 Logs do serviço:"
+        sudo systemctl status desfollow --no-pager
+        echo ""
+        echo "📋 Tentando iniciar manualmente..."
+        cd /root/desfollow
+        nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+        sleep 3
     fi
 else
     echo "📋 Iniciando backend manualmente..."
     cd /root/desfollow
-    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
     sleep 3
 fi
 
@@ -311,17 +355,18 @@ if pgrep -f "uvicorn\|gunicorn" > /dev/null; then
     echo "✅ Backend rodando sem CORS"
 else
     echo "❌ Backend não iniciou"
-    echo "📋 Tentando iniciar manualmente..."
-    cd /root/desfollow
-    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
-    sleep 3
-    
-    if pgrep -f "uvicorn\|gunicorn" > /dev/null; then
-        echo "✅ Backend iniciado manualmente"
-    else
-        echo "❌ Falha ao iniciar backend"
-        exit 1
+    echo "📋 Verificando logs do backend..."
+    if [ -f "/root/desfollow/backend.log" ]; then
+        echo "📋 Últimas linhas do log:"
+        tail -20 /root/desfollow/backend.log
     fi
+    echo ""
+    echo "📋 Tentando iniciar com debug..."
+    cd /root/desfollow
+    timeout 10 uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug
+    echo ""
+    echo "❌ Falha ao iniciar backend. Verifique os logs acima."
+    exit 1
 fi
 
 echo ""
@@ -348,11 +393,13 @@ echo ""
 echo "✅ CORS HTTPS FIXO SEM CONFLITO CONFIGURADO!"
 echo ""
 echo "🔗 CONFIGURAÇÃO FINAL:"
-echo "   Frontend: http://desfollow.com.br (HTTP - SSL via Hostinger)"
-echo "   Frontend: http://www.desfollow.com.br (HTTP - SSL via Hostinger)"
+echo "   Frontend: https://desfollow.com.br (HTTPS - SSL via Hostinger)"
+echo "   Frontend: https://www.desfollow.com.br (HTTPS - SSL via Hostinger)"
 echo "   API:      https://api.desfollow.com.br (HTTPS)"
 echo ""
 echo "🔄 REDIRECIONAMENTOS:"
+echo "   http://desfollow.com.br → https://desfollow.com.br"
+echo "   http://www.desfollow.com.br → https://www.desfollow.com.br"
 echo "   http://api.desfollow.com.br → https://api.desfollow.com.br"
 echo ""
 echo "⚙️ MELHORIAS ATIVAS:"
