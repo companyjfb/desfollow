@@ -391,7 +391,6 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                 break
                 
             data = response.json()
-            print(f"📋 [FOLLOWERS-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
             
             # 🔍 LOG COMPLETO DA RESPOSTA (primeiras 1000 chars)
             import json
@@ -400,8 +399,12 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(response_str)
             print(f"📊 [FOLLOWERS-V2] CHAVES DISPONÍVEIS: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
             
-            # Extrair dados
-            items = data.get('items', [])
+            # 🎯 CORREÇÃO: API v2 retorna dados dentro de 'data'
+            api_data = data.get('data', {})
+            items = api_data.get('items', [])
+            count = api_data.get('count', 0)
+            
+            print(f"📋 [FOLLOWERS-V2] Response estrutura: count={count}, items={len(items)}")
             
             # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
             if not items and page == 1:
@@ -451,7 +454,7 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWERS-V2] Total acumulado: {len(all_followers)} seguidores")
             
             # Verificar se há próxima página
-            pagination_token = data.get('pagination_token')
+            pagination_token = api_data.get('pagination_token')
             if not pagination_token:
                 print(f"🏁 [FOLLOWERS-V2] Sem pagination_token - Última página alcançada")
                 break
@@ -523,7 +526,6 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                 break
                 
             data = response.json()
-            print(f"📋 [FOLLOWING-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
             
             # 🔍 LOG COMPLETO DA RESPOSTA (primeiras 1000 chars)
             import json
@@ -532,8 +534,12 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(response_str)
             print(f"📊 [FOLLOWING-V2] CHAVES DISPONÍVEIS: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
             
-            # Extrair dados
-            items = data.get('items', [])
+            # 🎯 CORREÇÃO: API v2 retorna dados dentro de 'data'
+            api_data = data.get('data', {})
+            items = api_data.get('items', [])
+            count = api_data.get('count', 0)
+            
+            print(f"📋 [FOLLOWING-V2] Response estrutura: count={count}, items={len(items)}")
             
             # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
             if not items and page == 1:
@@ -583,7 +589,7 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWING-V2] Total acumulado: {len(all_following)} seguindo")
             
             # Verificar se há próxima página
-            pagination_token = data.get('pagination_token')
+            pagination_token = api_data.get('pagination_token')
             if not pagination_token:
                 print(f"🏁 [FOLLOWING-V2] Sem pagination_token - Última página alcançada")
                 break
