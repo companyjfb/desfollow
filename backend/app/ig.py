@@ -216,6 +216,7 @@ def classify_ghost(username: str, full_name: str = "", biography: str = "") -> s
 async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user_id: str = None, db_session = None) -> Dict[str, Any]:
     """
     Obtém ghosts com dados do perfil e classificação melhorada.
+    Implementa lógica correta: primeiro busca todos os followers, depois todos os following.
     """
     print(f"🚀 Iniciando análise para: {username}")
     print(f"📊 Dados do perfil recebidos: {profile_info.get('followers_count', 0) if profile_info else 0} seguidores, {profile_info.get('following_count', 0) if profile_info else 0} seguindo")
@@ -246,16 +247,18 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"✅ User ID obtido: {user_id}")
     print(f"📊 Profile info final: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
     
-    # 🚀 Obter seguidores e seguindo com API v2 + LOGS DETALHADOS
-    print(f"🚀 Iniciando busca de seguidores com API v2...")
+    # 🎯 FASE 1: Buscar TODOS os seguidores até terminar
+    print(f"🚀 === FASE 1: BUSCANDO TODOS OS SEGUIDORES ===")
     followers = await get_followers_with_new_api(user_id, db_session)
-    print(f"🔍 DEBUG - followers retornados: {len(followers) if followers else 0} usuários")
-    print(f"🔍 DEBUG - followers type: {type(followers)}")
+    print(f"✅ FASE 1 CONCLUÍDA: {len(followers)} seguidores capturados")
     
-    print(f"🚀 Iniciando busca de seguindo com API v2...")
+    # 🎯 FASE 2: Buscar TODOS os seguindo até terminar
+    print(f"🚀 === FASE 2: BUSCANDO TODOS OS SEGUINDO ===")
     following = await get_following_with_new_api(user_id, db_session)
-    print(f"🔍 DEBUG - following retornados: {len(following) if following else 0} usuários")
-    print(f"🔍 DEBUG - following type: {type(following)}")
+    print(f"✅ FASE 2 CONCLUÍDA: {len(following)} seguindo capturados")
+    
+    # 🎯 FASE 3: Analisar ghosts
+    print(f"🚀 === FASE 3: ANALISANDO GHOSTS ===")
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
@@ -345,7 +348,7 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         "following_count": len(following),  # 📊 REAL
         "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
         "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
-        "all": ghosts  # 📊 DADOS REAIS
+        "all": ghosts  # �� DADOS REAIS
     }
 
 # 🚀 NOVAS FUNÇÕES - API 2 (INSTAGRAM-SCRAPER-20251)
@@ -353,7 +356,7 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
 async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Dict]:
     """
     🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
-    Busca seguidores com limite de páginas para evitar loops infinitos.
+    Busca seguidores até obter todos ou até não ter mais pagination_token.
     """
     print(f"🚀 [FOLLOWERS-V2] Iniciando busca com nova API para user_id: {user_id}")
     
@@ -361,7 +364,7 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
-    max_pages = 20  # Limite de 20 páginas para evitar loops infinitos
+    max_pages = 20  # Limite de 20 páginas por função
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
@@ -441,12 +444,6 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                 
             print(f"✅ [FOLLOWERS-V2] {len(items)} seguidores recebidos na página {page}")
             
-            # 🚨 VERIFICAÇÃO: Se recebeu menos items que o count, pode ser fim dos dados
-            # Mas vamos continuar por mais algumas páginas para garantir
-            if len(items) < 50 and page > 1:
-                print(f"⚠️ [FOLLOWERS-V2] Recebeu apenas {len(items)} items (menos que 50)")
-                print(f"🔄 [FOLLOWERS-V2] Continuando por mais algumas páginas para garantir...")
-            
             # Processar usuários
             page_new_users = 0
             for i, user in enumerate(items):
@@ -477,29 +474,19 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários")
             print(f"📊 [FOLLOWERS-V2] Total acumulado: {total_new_users} usuários")
             
-            # Verificar se há mais páginas
-            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
-            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
-            
-            # 🚨 CORREÇÃO: Continuar até realmente acabar
-            # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
-            # mas ainda há mais dados. Vamos continuar se recebemos items nesta página
-            if not pagination_token and len(items) > 0:
-                print(f"⚠️ [FOLLOWERS-V2] Sem pagination_token mas recebeu {len(items)} items")
-                print(f"🔄 [FOLLOWERS-V2] Continuando para próxima página...")
-                page += 1
-                continue
-            elif not pagination_token and len(items) == 0:
-                print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem token e sem items")
-                break
-            elif pagination_token:
-                print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
-                page += 1
-            else:
+            # 🎯 NOVA LÓGICA: Verificar se há mais páginas
+            # Se não há pagination_token OU se não há novos usuários, chegamos ao fim
+            if not pagination_token:
                 print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem pagination_token")
                 break
+            elif len(items) == 0:
+                print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Zero novos usuários na página")
+                break
+            else:
+                print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
+                page += 1
             
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 20 páginas para evitar loops infinitos
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
             if page > max_pages:
                 print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em {max_pages} páginas")
                 break
@@ -534,7 +521,7 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
 async def get_following_with_new_api(user_id: str, db_session = None) -> List[Dict]:
     """
     🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
-    Busca seguindo com limite de páginas para evitar loops infinitos.
+    Busca seguindo até obter todos ou até não ter mais pagination_token.
     """
     print(f"🚀 [FOLLOWING-V2] Iniciando busca com nova API para user_id: {user_id}")
     
@@ -542,7 +529,7 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
-    max_pages = 20  # Limite de 20 páginas para evitar loops infinitos
+    max_pages = 20  # Limite de 20 páginas por função
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
@@ -622,12 +609,6 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                 
             print(f"✅ [FOLLOWING-V2] {len(items)} seguindo recebidos na página {page}")
             
-            # 🚨 VERIFICAÇÃO: Se recebeu menos items que o count, pode ser fim dos dados
-            # Mas vamos continuar por mais algumas páginas para garantir
-            if len(items) < 50 and page > 1:
-                print(f"⚠️ [FOLLOWING-V2] Recebeu apenas {len(items)} items (menos que 50)")
-                print(f"🔄 [FOLLOWING-V2] Continuando por mais algumas páginas para garantir...")
-            
             # Processar usuários
             page_new_users = 0
             for i, user in enumerate(items):
@@ -658,31 +639,21 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários")
             print(f"📊 [FOLLOWING-V2] Total acumulado: {total_new_users} usuários")
             
-            # Verificar se há mais páginas
-            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
-            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
-            
-            # 🚨 CORREÇÃO: Continuar até realmente acabar
-            # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
-            # mas ainda há mais dados. Vamos continuar se recebemos items nesta página
-            if not pagination_token and len(items) > 0:
-                print(f"⚠️ [FOLLOWING-V2] Sem pagination_token mas recebeu {len(items)} items")
-                print(f"🔄 [FOLLOWING-V2] Continuando para próxima página...")
-                page += 1
-                continue
-            elif not pagination_token and len(items) == 0:
-                print(f"🏁 [FOLLOWING-V2] Fim da paginação - Sem token e sem items")
-                break
-            elif pagination_token:
-                print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
-                page += 1
-            else:
+            # 🎯 NOVA LÓGICA: Verificar se há mais páginas
+            # Se não há pagination_token OU se não há novos usuários, chegamos ao fim
+            if not pagination_token:
                 print(f"🏁 [FOLLOWING-V2] Fim da paginação - Sem pagination_token")
                 break
+            elif len(items) == 0:
+                print(f"🏁 [FOLLOWING-V2] Fim da paginação - Zero novos usuários na página")
+                break
+            else:
+                print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
+                page += 1
             
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 100 páginas para evitar loops infinitos
-            if page > 100:
-                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em 100 páginas")
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
+            if page > max_pages:
+                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em {max_pages} páginas")
                 break
                 
         except Exception as e:
