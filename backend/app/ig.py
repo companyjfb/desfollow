@@ -415,6 +415,17 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             items = api_data.get('items', [])
             count = api_data.get('count', 0)
             
+            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
+            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
+            print(f"🔍 [FOLLOWERS-V2] DEBUG - Estrutura da resposta:")
+            print(f"   - data.keys(): {list(api_data.keys()) if api_data else 'N/A'}")
+            print(f"   - data.count: {count}")
+            print(f"   - data.items: {len(items)} items")
+            print(f"   - pagination_token (nível raiz): {pagination_token}")
+            print(f"   - pagination_token type: {type(pagination_token)}")
+            if pagination_token:
+                print(f"   - pagination_token length: {len(str(pagination_token))}")
+            
             print(f"📋 [FOLLOWERS-V2] Response estrutura: count={count}, items={len(items)}")
             
             # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
@@ -464,7 +475,8 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWERS-V2] Total acumulado: {total_new_users} usuários")
             
             # Verificar se há mais páginas
-            pagination_token = api_data.get('pagination_token')
+            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
+            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
             
             # 🚨 CORREÇÃO: Continuar até realmente acabar
             # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
@@ -566,6 +578,17 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             items = api_data.get('items', [])
             count = api_data.get('count', 0)
             
+            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
+            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
+            print(f"🔍 [FOLLOWING-V2] DEBUG - Estrutura da resposta:")
+            print(f"   - data.keys(): {list(api_data.keys()) if api_data else 'N/A'}")
+            print(f"   - data.count: {count}")
+            print(f"   - data.items: {len(items)} items")
+            print(f"   - pagination_token (nível raiz): {pagination_token}")
+            print(f"   - pagination_token type: {type(pagination_token)}")
+            if pagination_token:
+                print(f"   - pagination_token length: {len(str(pagination_token))}")
+            
             print(f"📋 [FOLLOWING-V2] Response estrutura: count={count}, items={len(items)}")
             
             # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
@@ -615,7 +638,8 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWING-V2] Total acumulado: {total_new_users} usuários")
             
             # Verificar se há mais páginas
-            pagination_token = api_data.get('pagination_token')
+            # 🚨 CORREÇÃO: pagination_token está no mesmo nível que 'data'
+            pagination_token = data.get('pagination_token')  # NÃO dentro de api_data
             
             # 🚨 CORREÇÃO: Continuar até realmente acabar
             # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
