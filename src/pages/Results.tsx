@@ -284,16 +284,7 @@ const Results = () => {
           </div>
         </div>
 
-        {/* Alert Banner */}
-        <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 backdrop-blur-xl rounded-2xl p-6 border border-red-500/30 mb-8">
-          <div className="flex items-center justify-center space-x-3">
-            <AlertTriangle className="w-6 h-6 text-orange-400" />
-            <div className="text-center">
-              <p className="text-white font-bold text-lg">⚠️ Alerta: Alto Índice de Parasitas Detectado</p>
-              <p className="text-white/80 text-sm">{lossRate}% das pessoas que você segue não te seguem de volta</p>
-            </div>
-          </div>
-        </div>
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
