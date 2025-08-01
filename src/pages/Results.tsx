@@ -132,7 +132,7 @@ const Results = () => {
   // Combina pessoas reais e verificadas, priorizando pessoas reais
   const allGhosts = [];
   
-  // Adiciona pessoas reais primeiro
+  // Adiciona pessoas reais primeiro (não verificadas)
   if (scanData?.real_ghosts) {
     allGhosts.push(...scanData.real_ghosts.map(user => ({
       ...user,
@@ -140,7 +140,7 @@ const Results = () => {
     })));
   }
   
-  // Adiciona pessoas verificadas depois
+  // Adiciona pessoas verificadas depois (famosos/verificados)
   if (scanData?.famous_ghosts) {
     allGhosts.push(...scanData.famous_ghosts.map(user => ({
       ...user,
@@ -178,7 +178,9 @@ const Results = () => {
     );
   }
   
-  // Mostra apenas os primeiros 4 perfis (ou todos para jordanbitencourt)
+  // ✅ ORDEM OTIMIZADA: Primeiro reais, depois verificados
+  // Para usuário especial: mostra todos na ordem correta
+  // Para usuário normal: mostra apenas os primeiros 4 na ordem correta
   const visibleProfiles = isSpecialUser 
     ? allGhosts.map(user => ({
         name: user.username,
