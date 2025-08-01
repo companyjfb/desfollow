@@ -376,7 +376,7 @@ const Analyzing = () => {
               <h2 className="text-xl font-bold text-white mb-2">Erro na Análise</h2>
               <p className="text-white/80 text-sm mb-6">{error}</p>
               <button 
-                onClick={() => window.location.reload()}
+                onClick={() => window.location.href = '/'}
                 className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
               >
                 Tentar Novamente
