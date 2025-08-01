@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .auth_routes import router as auth_router
 from .database import create_tables
@@ -17,36 +16,6 @@ app = FastAPI(
     title="Desfollow API",
     description="API para encontrar usuários que não retribuem follows no Instagram",
     version="1.0.0"
-)
-
-# Configuração CORS para domínios de produção (HTTP e HTTPS)
-allowed_origins = [
-    # Domínios de produção - HTTP
-    "http://desfollow.com.br",
-    "http://www.desfollow.com.br",
-    "http://api.desfollow.com.br",
-    # Domínios de produção - HTTPS
-    "https://desfollow.com.br",
-    "https://www.desfollow.com.br",
-    "https://api.desfollow.com.br",
-    # Wildcard temporário para resolver CORS
-    "*"
-]
-
-# Adiciona domínios de produção se configurados
-frontend_url = os.getenv("FRONTEND_URL")
-if frontend_url:
-    allowed_origins.append(frontend_url)
-    allowed_origins.append(frontend_url.replace("https://", "http://"))
-
-logger.info(f"CORS allowed origins: {allowed_origins}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 # Inclui as rotas
