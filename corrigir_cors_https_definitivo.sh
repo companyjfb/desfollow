@@ -279,12 +279,31 @@ else
 fi
 
 echo ""
-echo "📋 Reiniciando backend sem CORS..."
-cd /root/desfollow
+echo "📋 Reiniciando backend usando systemctl..."
+
+# Parar processos antigos
 pkill -f "uvicorn\|gunicorn"
 sleep 2
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
-sleep 3
+
+# Verificar se existe serviço systemd
+if systemctl list-unit-files | grep -q "desfollow"; then
+    echo "📋 Usando serviço systemd desfollow..."
+    sudo systemctl restart desfollow
+    sleep 3
+    
+    if systemctl is-active --quiet desfollow; then
+        echo "✅ Backend reiniciado via systemctl"
+    else
+        echo "❌ Erro ao reiniciar via systemctl"
+        sudo systemctl status desfollow
+        exit 1
+    fi
+else
+    echo "📋 Iniciando backend manualmente..."
+    cd /root/desfollow
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+    sleep 3
+fi
 
 echo ""
 echo "📋 Verificando se backend está rodando..."
@@ -292,7 +311,17 @@ if pgrep -f "uvicorn\|gunicorn" > /dev/null; then
     echo "✅ Backend rodando sem CORS"
 else
     echo "❌ Backend não iniciou"
-    exit 1
+    echo "📋 Tentando iniciar manualmente..."
+    cd /root/desfollow
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+    sleep 3
+    
+    if pgrep -f "uvicorn\|gunicorn" > /dev/null; then
+        echo "✅ Backend iniciado manualmente"
+    else
+        echo "❌ Falha ao iniciar backend"
+        exit 1
+    fi
 fi
 
 echo ""
