@@ -148,36 +148,6 @@ const Results = () => {
     })));
   }
   
-  // Se não há dados reais, usa dados simulados
-  if (allGhosts.length === 0) {
-    allGhosts.push(
-      {
-        username: "usuario1",
-        full_name: "Usuário Exemplo 1",
-        profile_pic_url: "/lovable-uploads/b1878feb-16ec-438c-8e37-5258266aedd6.png",
-        is_private: false,
-        is_verified: false,
-        type: 'real'
-      },
-      {
-        username: "usuario2", 
-        full_name: "Usuário Exemplo 2",
-        profile_pic_url: "/lovable-uploads/c66eb0c2-8f5d-4575-93e6-9aa364372325.png",
-        is_private: true,
-        is_verified: false,
-        type: 'real'
-      },
-      {
-        username: "usuario3",
-        full_name: "Usuário Exemplo 3", 
-        profile_pic_url: "/lovable-uploads/da90f167-2ab5-4f82-a0e3-3d89f44d82f8.png",
-        is_private: false,
-        is_verified: true,
-        type: 'verified'
-      }
-    );
-  }
-  
   // ✅ ORDEM OTIMIZADA: Primeiro reais, depois verificados
   // Para usuário especial: mostra todos na ordem correta
   // Para usuário normal: mostra apenas os primeiros 4 na ordem correta
