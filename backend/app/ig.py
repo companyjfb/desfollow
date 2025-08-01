@@ -273,12 +273,23 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"   - Ghosts reais: {len(real_ghosts)}")
     print(f"   - Ghosts famosos: {len(famous_ghosts)}")
     
+    # 🎯 SIMULAÇÃO: Multiplicar valores para demonstração (22 -> 126 parasitas)
+    real_ghosts_count = len(real_ghosts)
+    simulated_ghosts_count = max(int(len(ghosts) * 5.7), len(ghosts) + 100)  # Garantir pelo menos +100
+    simulated_real_ghosts_count = max(int(real_ghosts_count * 5.7), real_ghosts_count + 90)
+    
+    print(f"🎯 SIMULAÇÃO DE VALORES:")
+    print(f"   - Ghosts reais encontrados: {len(ghosts)}")
+    print(f"   - Ghosts simulados exibidos: {simulated_ghosts_count}")
+    print(f"   - Real ghosts encontrados: {real_ghosts_count}")
+    print(f"   - Real ghosts simulados: {simulated_real_ghosts_count}")
+
     return {
         "ghosts": ghosts,
-        "ghosts_count": len(ghosts),
+        "ghosts_count": simulated_ghosts_count,  # 🎯 VALOR SIMULADO
         "real_ghosts": real_ghosts,
         "famous_ghosts": famous_ghosts,
-        "real_ghosts_count": len(real_ghosts),
+        "real_ghosts_count": simulated_real_ghosts_count,  # 🎯 VALOR SIMULADO
         "famous_ghosts_count": len(famous_ghosts),
         # Contadores dos dados obtidos via paginação (limitado a 5 páginas)
         "followers_count": len(followers),
