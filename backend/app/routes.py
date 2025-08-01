@@ -66,6 +66,10 @@ class StatusResponse(BaseModel):
     famous_ghosts: Optional[List[Dict[str, Any]]] = None
     real_ghosts_count: Optional[int] = None
     famous_ghosts_count: Optional[int] = None
+    followers_count: Optional[int] = None  # Quantos seguidores analisamos
+    following_count: Optional[int] = None  # Quantos seguindo analisamos
+    profile_followers_count: Optional[int] = None  # Total de seguidores do perfil
+    profile_following_count: Optional[int] = None  # Total de seguindo do perfil
     profile_info: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
@@ -266,6 +270,10 @@ def status(job_id: str, db: Session = Depends(get_db)):
                 famous_ghosts=scan.famous_ghosts,
                 real_ghosts_count=scan.real_ghosts_count,
                 famous_ghosts_count=scan.famous_ghosts_count,
+                followers_count=scan.followers_count,  # Quantos analisamos
+                following_count=scan.following_count,  # Quantos analisamos
+                profile_followers_count=scan.profile_followers_count,  # Total do perfil
+                profile_following_count=scan.profile_following_count,  # Total do perfil
                 profile_info=scan.profile_info
             )
         
@@ -275,7 +283,11 @@ def status(job_id: str, db: Session = Depends(get_db)):
             profile_info=scan.profile_info,
             count=scan.ghosts_count or 0,
             real_ghosts_count=scan.real_ghosts_count or 0,
-            famous_ghosts_count=scan.famous_ghosts_count or 0
+            famous_ghosts_count=scan.famous_ghosts_count or 0,
+            followers_count=scan.followers_count or 0,
+            following_count=scan.following_count or 0,
+            profile_followers_count=scan.profile_followers_count or 0,
+            profile_following_count=scan.profile_following_count or 0
         )
     
     # Se não encontrou no banco, verificar no cache
@@ -310,6 +322,10 @@ def status(job_id: str, db: Session = Depends(get_db)):
             famous_ghosts=job_data["famous_ghosts"],
             real_ghosts_count=job_data["real_ghosts_count"],
             famous_ghosts_count=job_data["famous_ghosts_count"],
+            followers_count=job_data.get("followers_count", 0),
+            following_count=job_data.get("following_count", 0),
+            profile_followers_count=job_data.get("profile_followers_count", 0),
+            profile_following_count=job_data.get("profile_following_count", 0),
             profile_info=job_data["profile_info"]
         )
     
@@ -319,7 +335,11 @@ def status(job_id: str, db: Session = Depends(get_db)):
         profile_info=job_data.get("profile_info"),
         count=job_data.get("count", 0),
         real_ghosts_count=job_data.get("real_ghosts_count", 0),
-        famous_ghosts_count=job_data.get("famous_ghosts_count", 0)
+        famous_ghosts_count=job_data.get("famous_ghosts_count", 0),
+        followers_count=job_data.get("followers_count", 0),
+        following_count=job_data.get("following_count", 0),
+        profile_followers_count=job_data.get("profile_followers_count", 0),
+        profile_following_count=job_data.get("profile_following_count", 0)
     )
 
 @router.get("/user/{username}/history")

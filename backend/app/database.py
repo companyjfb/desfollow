@@ -47,8 +47,10 @@ class Scan(Base):
     target_username = Column(String(255), nullable=True)  # Para compatibilidade com o banco
     job_id = Column(String(255), unique=True, nullable=False, index=True)
     status = Column(String(50), nullable=False)  # queued, running, done, error
-    followers_count = Column(Integer, default=0)
-    following_count = Column(Integer, default=0)
+    followers_count = Column(Integer, default=0)  # Quantos seguidores analisamos
+    following_count = Column(Integer, default=0)  # Quantos seguindo analisamos
+    profile_followers_count = Column(Integer, default=0)  # Total de seguidores do perfil
+    profile_following_count = Column(Integer, default=0)  # Total de seguindo do perfil
     ghosts_count = Column(Integer, default=0)
     real_ghosts_count = Column(Integer, default=0)
     famous_ghosts_count = Column(Integer, default=0)
@@ -205,16 +207,19 @@ def save_scan_result(db, job_id, username, status, profile_info=None, ghosts_dat
         scan.famous_ghosts_count = ghosts_data.get('famous_ghosts_count', len(ghosts_data.get('famous_ghosts', [])))
     
     if profile_info:
-        scan.followers_count = profile_info.get('followers_count', 0)
-        scan.following_count = profile_info.get('following_count', 0)
+        # 📊 DADOS DO PERFIL ORIGINAL (totais)
+        scan.profile_followers_count = profile_info.get('followers_count', 0)
+        scan.profile_following_count = profile_info.get('following_count', 0)
     
-    # Atualizar com contadores reais se disponíveis nos ghosts_data
+    # 📊 DADOS CAPTURADOS/ANALISADOS (quantos conseguimos analisar)
     if ghosts_data:
-        # Usar contadores reais do perfil se disponíveis
-        if ghosts_data.get('profile_followers_count'):
-            scan.followers_count = ghosts_data.get('profile_followers_count', scan.followers_count)
-        if ghosts_data.get('profile_following_count'):
-            scan.following_count = ghosts_data.get('profile_following_count', scan.following_count)
+        scan.followers_count = ghosts_data.get('followers_count', 0)  # Quantos seguidores analisamos
+        scan.following_count = ghosts_data.get('following_count', 0)  # Quantos seguindo analisamos
+        
+        # 📊 Se não temos profile_info, pegar do ghosts_data
+        if not profile_info:
+            scan.profile_followers_count = ghosts_data.get('profile_followers_count', 0)
+            scan.profile_following_count = ghosts_data.get('profile_following_count', 0)
     
     # Salvar mensagem de erro se fornecida
     if error_message:
