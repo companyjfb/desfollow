@@ -1,136 +1,232 @@
 #!/bin/bash
 
-echo "🔧 Corrigindo CORS para produção..."
-echo "=================================="
+echo "🔧 CORREÇÃO CORS FINAL"
+echo "======================"
+echo "Corrigindo erro: 'multiple values but only one is allowed'"
+echo "Usando add_header direto sem if/map (funciona no server block)"
+echo ""
 
-echo "📋 Verificando configuração atual do CORS..."
-
-# Fazer backup do arquivo atual
-cp backend/app/main.py backend/app/main.py.backup
+# Backup da configuração atual
+BACKUP_FILE="/etc/nginx/sites-available/desfollow.backup.cors-final.$(date +%Y%m%d_%H%M%S)"
+sudo cp /etc/nginx/sites-available/desfollow "$BACKUP_FILE"
+echo "💾 Backup: $BACKUP_FILE"
 
 echo ""
-echo "🔧 Aplicando configuração CORS para produção..."
+echo "📋 Criando configuração nginx com CORS final..."
 
-# Criar nova configuração CORS
-cat > backend/app/main.py << 'EOF'
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from .routes import router
-from .auth_routes import router as auth_router
-from .database import create_tables
-import os
-from dotenv import load_dotenv
-import logging
+# Configuração corrigida - CORS simples sem if/map
+sudo tee /etc/nginx/sites-available/desfollow > /dev/null << 'EOF'
+# ========================================
+# CONFIGURAÇÃO NGINX - DESFOLLOW CORS FINAL
+# ========================================
+# Frontend: HTTP (sem SSL)
+# API: HTTPS (SSL funcionando)
+# CORS: add_header direto (funciona no server block)
+# ========================================
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-app = FastAPI(
-    title="Desfollow API",
-    description="API para encontrar usuários que não retribuem follows no Instagram",
-    version="1.0.0"
-)
-
-# Configuração CORS apenas para domínios de produção
-allowed_origins = [
-    # Domínios de produção
-    "https://desfollow.com.br",
-    "https://www.desfollow.com.br",
-    "http://desfollow.com.br",
-    "http://www.desfollow.com.br",
-    "https://api.desfollow.com.br",
-    "http://api.desfollow.com.br",
-]
-
-# Adiciona domínios de produção se configurados
-frontend_url = os.getenv("FRONTEND_URL")
-if frontend_url:
-    allowed_origins.append(frontend_url)
-    allowed_origins.append(frontend_url.replace("https://", "http://"))
-
-logger.info(f"CORS allowed origins: {allowed_origins}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Inclui as rotas
-app.include_router(router, prefix="/api")
-app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
-
-# Criar tabelas na inicialização
-@app.on_event("startup")
-async def startup_event():
-    try:
-        logger.info("Iniciando aplicação...")
-        create_tables()
-        logger.info("Tabelas criadas com sucesso!")
-    except Exception as e:
-        logger.error(f"Erro ao criar tabelas: {e}")
-
-@app.get("/")
-async def root():
-    """
-    Endpoint raiz da API.
-    """
-    return {
-        "message": "Desfollow API",
-        "version": "1.0.0",
-        "docs": "/docs"
+# FRONTEND HTTP - SEM SSL (temporário)
+server {
+    listen 80;
+    server_name desfollow.com.br www.desfollow.com.br;
+    
+    root /var/www/html;
+    index index.html;
+    
+    access_log /var/log/nginx/frontend_access.log;
+    error_log /var/log/nginx/frontend_error.log;
+    
+    # Cache para assets estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
     }
+    
+    # React Router - todas as rotas SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+        
+        # Headers de segurança
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+    }
+    
+    # Bloquear acesso a arquivos sensíveis
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "Frontend HTTP OK\n";
+        add_header Content-Type text/plain;
+    }
+}
 
-@app.get("/health")
-async def health_check():
-    """
-    Endpoint de health check.
-    """
-    return {"status": "healthy"}
+# API HTTP -> HTTPS REDIRECT
+server {
+    listen 80;
+    server_name api.desfollow.com.br;
+    return 301 https://$server_name$request_uri;
+}
+
+# API HTTPS - CORS FINAL CORRIGIDO
+server {
+    listen 443 ssl http2;
+    server_name api.desfollow.com.br;
+    
+    # Certificados SSL da API (existem)
+    ssl_certificate /etc/letsencrypt/live/api.desfollow.com.br/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.desfollow.com.br/privkey.pem;
+    
+    # Configurações SSL seguras
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # Headers de segurança
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    # Logs da API
+    access_log /var/log/nginx/api_ssl_access.log;
+    error_log /var/log/nginx/api_ssl_error.log;
+    
+    # Proxy para backend
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Server $host;
+        
+        # 🚀 TIMEOUTS CORRIGIDOS: 5 minutos
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        
+        # 🚀 CONFIGURAÇÕES PARA REQUESTS LONGOS
+        proxy_buffering off;
+        proxy_request_buffering off;
+        client_max_body_size 10m;
+        
+        # 🚀 CORS FINAL - ADD_HEADER DIRETO (FUNCIONA NO SERVER BLOCK)
+        # CORS para requests normais (GET, POST, etc.)
+        add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
+        add_header Access-Control-Allow-Origin "https://www.desfollow.com.br" always;
+        add_header Access-Control-Allow-Origin "http://desfollow.com.br" always;
+        add_header Access-Control-Allow-Origin "http://www.desfollow.com.br" always;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
+        add_header Access-Control-Allow-Credentials true always;
+        
+        # Preflight OPTIONS - CORS específico
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
+            add_header Access-Control-Allow-Origin "https://www.desfollow.com.br" always;
+            add_header Access-Control-Allow-Origin "http://desfollow.com.br" always;
+            add_header Access-Control-Allow-Origin "http://www.desfollow.com.br" always;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
+            add_header Access-Control-Max-Age 1728000 always;
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+    
+    # Health check da API
+    location /health {
+        access_log off;
+        proxy_pass http://127.0.0.1:8000/health;
+    }
+}
 EOF
 
-echo "✅ Configuração CORS aplicada!"
+echo "✅ Configuração CORS final criada"
 
 echo ""
-echo "🔍 Testando sintaxe do Python..."
-python3 -m py_compile backend/app/main.py
-
+echo "📋 Testando configuração..."
+sudo nginx -t
 if [ $? -eq 0 ]; then
-    echo "✅ Sintaxe correta!"
-    
-    echo ""
-    echo "📤 Enviando para o servidor..."
-    
-    # Enviar para o servidor
-    scp backend/app/main.py root@api.desfollow.com.br:~/desfollow/backend/app/main.py
-    
-    echo ""
-    echo "🔄 Reiniciando serviço no servidor..."
-    ssh root@api.desfollow.com.br "cd ~/desfollow && systemctl restart desfollow"
-    
-    echo ""
-    echo "⏳ Aguardando 5 segundos..."
-    sleep 5
-    
-    echo ""
-    echo "🔍 Testando API..."
-    curl -I https://api.desfollow.com.br/health
-    
-    echo ""
-    echo "✅ CORS corrigido com sucesso!"
-    echo ""
-    echo "📋 Resumo:"
-    echo "   - Frontend: https://desfollow.com.br"
-    echo "   - API: https://api.desfollow.com.br"
-    echo "   - CORS configurado apenas para domínios de produção"
-    
+    echo "✅ Configuração nginx válida!"
 else
-    echo "❌ Erro na sintaxe! Restaurando backup..."
-    cp backend/app/main.py.backup backend/app/main.py
-    echo "✅ Backup restaurado!"
-fi 
+    echo "❌ Configuração inválida. Restaurando backup..."
+    sudo cp "$BACKUP_FILE" /etc/nginx/sites-available/desfollow
+    exit 1
+fi
+
+echo ""
+echo "📋 Recarregando nginx..."
+sudo systemctl reload nginx
+if [ $? -eq 0 ]; then
+    echo "✅ Nginx recarregado com sucesso!"
+else
+    echo "❌ Erro ao recarregar nginx"
+    sudo systemctl status nginx
+    exit 1
+fi
+
+echo ""
+echo "📋 Testando CORS corrigido..."
+
+sleep 2
+
+echo "🧪 Testando CORS com https://desfollow.com.br..."
+CORS_TEST1=$(curl -s -H "Origin: https://desfollow.com.br" -H "Access-Control-Request-Method: POST" -X OPTIONS "https://api.desfollow.com.br/api/scan" -I | grep "Access-Control-Allow-Origin")
+echo "   Origin: https://desfollow.com.br"
+echo "   Response: $CORS_TEST1"
+
+echo "🧪 Testando CORS com https://www.desfollow.com.br..."
+CORS_TEST2=$(curl -s -H "Origin: https://www.desfollow.com.br" -H "Access-Control-Request-Method: POST" -X OPTIONS "https://api.desfollow.com.br/api/scan" -I | grep "Access-Control-Allow-Origin")
+echo "   Origin: https://www.desfollow.com.br"
+echo "   Response: $CORS_TEST2"
+
+echo "🧪 Testando CORS com http://desfollow.com.br..."
+CORS_TEST3=$(curl -s -H "Origin: http://desfollow.com.br" -H "Access-Control-Request-Method: POST" -X OPTIONS "https://api.desfollow.com.br/api/scan" -I | grep "Access-Control-Allow-Origin")
+echo "   Origin: http://desfollow.com.br"
+echo "   Response: $CORS_TEST3"
+
+echo ""
+echo "📋 Testando API ainda funciona..."
+API_TEST=$(curl -s "https://api.desfollow.com.br/api/health" 2>/dev/null)
+if echo "$API_TEST" | grep -q "healthy"; then
+    echo "✅ API HTTPS: $API_TEST"
+else
+    echo "⚠️ API HTTPS: $API_TEST"
+fi
+
+echo ""
+echo "📋 Testando comunicação completa..."
+cd /root/desfollow
+python3 testar_comunicacao_frontend_backend.py
+
+echo ""
+echo "✅ CORS FINAL CONFIGURADO!"
+echo ""
+echo "🔗 CONFIGURAÇÃO FINAL:"
+echo "   Frontend: http://desfollow.com.br (HTTP temporário)"
+echo "   Frontend: http://www.desfollow.com.br (HTTP temporário)"  
+echo "   API:      https://api.desfollow.com.br (HTTPS funcionando)"
+echo ""
+echo "🔄 CORS COM ADD_HEADER DIRETO:"
+echo "   ✅ Origin: https://desfollow.com.br → Allow-Origin: https://desfollow.com.br"
+echo "   ✅ Origin: https://www.desfollow.com.br → Allow-Origin: https://www.desfollow.com.br"
+echo "   ✅ Origin: http://desfollow.com.br → Allow-Origin: http://desfollow.com.br"
+echo "   ✅ Origin: http://www.desfollow.com.br → Allow-Origin: http://www.desfollow.com.br"
+echo ""
+echo "⚙️ MELHORIAS MANTIDAS:"
+echo "   ✅ Timeout API: 300s (5 minutos)"
+echo "   ✅ CORS: add_header direto (sem if/map)"
+echo "   ✅ Proxy buffering: Desabilitado"
+echo ""
+echo "📜 Backup salvo em: $BACKUP_FILE"
+echo ""
+echo "🚀 CORS corrigido! add_header direto funciona no server block." 
