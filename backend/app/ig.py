@@ -244,12 +244,12 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"✅ User ID obtido: {user_id}")
     print(f"📊 Profile info final: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
     
-    # 🚀 Obter seguidores e seguindo com API ANTIGA MELHORADA (mais confiável)
-    print(f"🚀 Iniciando busca de seguidores com API v1 otimizada...")
-    followers = await get_followers_optimized(user_id, db_session)
+    # 🚀 Obter seguidores e seguindo com API v2 + LOGS DETALHADOS
+    print(f"🚀 Iniciando busca de seguidores com API v2...")
+    followers = await get_followers_with_new_api(user_id, db_session)
     
-    print(f"🚀 Iniciando busca de seguindo com API v1 otimizada...")
-    following = await get_following_optimized(user_id, db_session)
+    print(f"🚀 Iniciando busca de seguindo com API v2...")
+    following = await get_following_with_new_api(user_id, db_session)
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
@@ -393,6 +393,13 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             data = response.json()
             print(f"📋 [FOLLOWERS-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
             
+            # 🔍 LOG COMPLETO DA RESPOSTA (primeiras 1000 chars)
+            import json
+            response_str = json.dumps(data, indent=2)[:1000]
+            print(f"📄 [FOLLOWERS-V2] RESPOSTA COMPLETA (1000 chars):")
+            print(response_str)
+            print(f"📊 [FOLLOWERS-V2] CHAVES DISPONÍVEIS: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
+            
             # Extrair dados
             items = data.get('items', [])
             
@@ -517,6 +524,13 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                 
             data = response.json()
             print(f"📋 [FOLLOWING-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
+            
+            # 🔍 LOG COMPLETO DA RESPOSTA (primeiras 1000 chars)
+            import json
+            response_str = json.dumps(data, indent=2)[:1000]
+            print(f"📄 [FOLLOWING-V2] RESPOSTA COMPLETA (1000 chars):")
+            print(response_str)
+            print(f"📊 [FOLLOWING-V2] CHAVES DISPONÍVEIS: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
             
             # Extrair dados
             items = data.get('items', [])
