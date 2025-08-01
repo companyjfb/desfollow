@@ -112,11 +112,11 @@ const Analyzing = () => {
         const maxAttempts = 120; // 10 minutos máximo
         
         const getPollingInterval = (attempt: number) => {
-          // Backoff progressivo: 3s, 3s, 3s, 5s, 5s, 8s, 8s, 10s...
-          if (attempt < 3) return 3000;    // Primeiros 3: 3 segundos
-          if (attempt < 6) return 5000;    // Próximos 3: 5 segundos  
-          if (attempt < 10) return 8000;   // Próximos 4: 8 segundos
-          return 10000;                    // Restante: 10 segundos
+          // 🔧 Backoff otimizado: 5s, 5s, 8s, 12s, 15s...
+          if (attempt < 2) return 5000;    // Primeiros 2: 5 segundos
+          if (attempt < 4) return 8000;    // Próximos 2: 8 segundos  
+          if (attempt < 6) return 12000;   // Próximos 2: 12 segundos
+          return 15000;                    // Restante: 15 segundos
         };
         
         const pollWithBackoff = async () => {
@@ -269,16 +269,16 @@ const Analyzing = () => {
         const parasitesDuration = duration - delayBeforeParasites;
         const parasitesProgress = Math.min(parasitesElapsed / parasitesDuration, 1);
         
-        // Simula até 22 parasitas (valor real será usado no final)
-        const targetParasites = 22;
+        // 🎯 SIMULAÇÃO: Simula até 126 parasitas (valor real será usado no final)
+        const targetParasites = 126;
         const currentParasites = Math.floor(parasitesProgress * targetParasites);
         setSimulatedParasites(currentParasites);
       }
       
-      console.log('📈 Contagem:', { 
+              console.log('📈 Contagem:', { 
         elapsed: Math.floor(elapsed/1000) + 's', 
         followers: currentFollowers, 
-        parasites: elapsed < delayBeforeParasites ? 0 : Math.floor((elapsed - delayBeforeParasites) / (duration - delayBeforeParasites) * 22)
+        parasites: elapsed < delayBeforeParasites ? 0 : Math.floor((elapsed - delayBeforeParasites) / (duration - delayBeforeParasites) * 126)
       });
       
       if (elapsed >= duration) {

@@ -184,8 +184,15 @@ const Results = () => {
   };
 
   // 🎯 SIMULAÇÃO VISUAL: Multiplicar valores exibidos (manter cards reais)
-  const rawCount = scanData?.count || 28;
+  const rawCount = scanData?.count || scanData?.ghosts_count || 28;
   const totalGhosts = Math.floor(rawCount * 10.1); // 24 -> 242 (10.1x multiplier)
+  
+  console.log('🎯 SIMULAÇÃO FRONTEND:', { 
+    rawCount, 
+    totalGhosts, 
+    scanDataCount: scanData?.count,
+    scanDataGhostsCount: scanData?.ghosts_count 
+  });
   const realGhostsCount = scanData?.real_ghosts_count || 6;
   const famousGhostsCount = scanData?.famous_ghosts_count || 22;
   const followersCount = scanData?.profile_info?.followers_count || 0;
