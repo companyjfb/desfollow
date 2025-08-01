@@ -249,13 +249,49 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     
     # 🎯 FASE 1: Buscar TODOS os seguidores até terminar
     print(f"🚀 === FASE 1: BUSCANDO TODOS OS SEGUIDORES ===")
-    followers = await get_followers_with_new_api(user_id, db_session)
-    print(f"✅ FASE 1 CONCLUÍDA: {len(followers)} seguidores capturados")
+    try:
+        followers = await get_followers_with_new_api(user_id, db_session)
+        print(f"✅ FASE 1 CONCLUÍDA: {len(followers)} seguidores capturados")
+    except Exception as e:
+        error_msg = f"ERRO ao buscar seguidores: {str(e)}"
+        print(f"❌ {error_msg}")
+        return {
+            "ghosts": [],
+            "ghosts_count": 0,
+            "real_ghosts": [],
+            "famous_ghosts": [],
+            "real_ghosts_count": 0,
+            "famous_ghosts_count": 0,
+            "followers_count": 0,
+            "following_count": 0,
+            "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+            "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+            "error": error_msg,
+            "all": []
+        }
     
     # 🎯 FASE 2: Buscar TODOS os seguindo até terminar
     print(f"🚀 === FASE 2: BUSCANDO TODOS OS SEGUINDO ===")
-    following = await get_following_with_new_api(user_id, db_session)
-    print(f"✅ FASE 2 CONCLUÍDA: {len(following)} seguindo capturados")
+    try:
+        following = await get_following_with_new_api(user_id, db_session)
+        print(f"✅ FASE 2 CONCLUÍDA: {len(following)} seguindo capturados")
+    except Exception as e:
+        error_msg = f"ERRO ao buscar seguindo: {str(e)}"
+        print(f"❌ {error_msg}")
+        return {
+            "ghosts": [],
+            "ghosts_count": 0,
+            "real_ghosts": [],
+            "famous_ghosts": [],
+            "real_ghosts_count": 0,
+            "famous_ghosts_count": 0,
+            "followers_count": len(followers) if 'followers' in locals() else 0,
+            "following_count": 0,
+            "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+            "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+            "error": error_msg,
+            "all": []
+        }
     
     # 🎯 FASE 3: Analisar ghosts
     print(f"🚀 === FASE 3: ANALISANDO GHOSTS ===")
@@ -321,6 +357,25 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
             "famous_ghosts_count": 0,
             "followers_count": 0,
             "following_count": 0,
+            "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+            "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+            "error": error_msg,
+            "all": []
+        }
+    
+    # 🚨 VERIFICAÇÃO ADICIONAL: Se apenas uma das listas está vazia, também é erro
+    if len(followers) == 0 or len(following) == 0:
+        error_msg = f"ERRO: Dados incompletos - Seguidores: {len(followers)}, Seguindo: {len(following)}. Tente novamente."
+        print(f"❌ {error_msg}")
+        return {
+            "ghosts": [],
+            "ghosts_count": 0,
+            "real_ghosts": [],
+            "famous_ghosts": [],
+            "real_ghosts_count": 0,
+            "famous_ghosts_count": 0,
+            "followers_count": len(followers),
+            "following_count": len(following),
             "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
             "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
             "error": error_msg,
