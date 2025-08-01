@@ -81,24 +81,24 @@ echo "✅ CORS removido do backend"
 echo ""
 echo "📋 Criando configuração nginx com CORS HTTPS fixo..."
 
-# Configuração nginx com CORS HTTPS fixo
+# Configuração nginx com CORS HTTPS fixo (sem verificar certificados SSL)
 sudo tee /etc/nginx/sites-available/desfollow > /dev/null << 'EOF'
 # ========================================
 # CONFIGURAÇÃO NGINX - CORS HTTPS FIXO SEM CONFLITO
 # ========================================
-# Frontend: desfollow.com.br + www.desfollow.com.br (HTTPS)
+# Frontend: desfollow.com.br + www.desfollow.com.br (HTTPS via Hostinger)
 # API: api.desfollow.com.br (HTTPS)
 # CORS: Apenas nginx gerencia (sem backend)
 # ========================================
 
-# FRONTEND HTTPS - DESFOLLOW.COM.BR
+# FRONTEND HTTPS - DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
 server {
     listen 443 ssl http2;
     server_name desfollow.com.br;
     
-    # Certificados SSL (assumindo que existe)
-    ssl_certificate /etc/letsencrypt/live/desfollow.com.br/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/desfollow.com.br/privkey.pem;
+    # SSL gerenciado pela Hostinger (não verificar certificados)
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
     
     # Configurações SSL seguras
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -148,14 +148,14 @@ server {
     }
 }
 
-# FRONTEND HTTPS - WWW.DESFOLLOW.COM.BR
+# FRONTEND HTTPS - WWW.DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
 server {
     listen 443 ssl http2;
     server_name www.desfollow.com.br;
     
-    # Certificados SSL (mesmo do desfollow.com.br)
-    ssl_certificate /etc/letsencrypt/live/desfollow.com.br/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/desfollow.com.br/privkey.pem;
+    # SSL gerenciado pela Hostinger (não verificar certificados)
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
     
     # Configurações SSL seguras
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -224,7 +224,7 @@ server {
     listen 443 ssl http2;
     server_name api.desfollow.com.br;
     
-    # Certificados SSL da API
+    # Certificados SSL da API (verificar se existe)
     ssl_certificate /etc/letsencrypt/live/api.desfollow.com.br/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/api.desfollow.com.br/privkey.pem;
     
@@ -354,8 +354,8 @@ echo ""
 echo "✅ CORS HTTPS FIXO SEM CONFLITO CONFIGURADO!"
 echo ""
 echo "🔗 CONFIGURAÇÃO FINAL:"
-echo "   Frontend: https://desfollow.com.br (HTTPS)"
-echo "   Frontend: https://www.desfollow.com.br (HTTPS)"
+echo "   Frontend: https://desfollow.com.br (HTTPS via Hostinger)"
+echo "   Frontend: https://www.desfollow.com.br (HTTPS via Hostinger)"
 echo "   API:      https://api.desfollow.com.br (HTTPS)"
 echo ""
 echo "🔄 REDIRECIONAMENTOS:"
@@ -364,7 +364,7 @@ echo "   http://www.desfollow.com.br → https://www.desfollow.com.br"
 echo "   http://api.desfollow.com.br → https://api.desfollow.com.br"
 echo ""
 echo "⚙️ MELHORIAS ATIVAS:"
-echo "   ✅ SSL: Frontend e API com HTTPS"
+echo "   ✅ SSL: Frontend (Hostinger) e API (Let's Encrypt)"
 echo "   ✅ CORS: Apenas nginx (sem conflito backend)"
 echo "   ✅ Roteamento: Frontend em ambos domínios"
 echo "   ✅ Timeout API: 300s (5 minutos)"
