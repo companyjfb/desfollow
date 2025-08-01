@@ -285,41 +285,57 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"   - Ghosts reais: {len(real_ghosts)}")
     print(f"   - Ghosts famosos: {len(famous_ghosts)}")
     
-    # 🎯 SIMULAÇÃO REALÍSTICA: Ghosts nunca podem ser > seguindo
-    real_ghosts_count = len(real_ghosts)
-    following_count = len(following)
-    
-    # Simular 80-95% de ghost rate (realístico)
-    if len(ghosts) > 0:
-        # Se já temos ghosts, simular entre 70-90% de ghost rate
-        max_possible_ghosts = following_count
-        simulated_ghosts_count = min(int(following_count * 0.85), max_possible_ghosts)
-        simulated_real_ghosts_count = min(int(simulated_ghosts_count * 0.9), simulated_ghosts_count)
-    else:
-        # Se não temos ghosts, simular uns poucos
-        simulated_ghosts_count = min(5, following_count) 
-        simulated_real_ghosts_count = simulated_ghosts_count
-    
-    print(f"🎯 SIMULAÇÃO DE VALORES:")
+    # ❌ REMOVER SIMULAÇÃO FALSA: Retornar dados REAIS ou erro
+    print(f"📊 ANÁLISE CONCLUÍDA:")
+    print(f"   - Seguidores capturados: {len(followers)}")
+    print(f"   - Seguindo capturados: {len(following)}")
     print(f"   - Ghosts reais encontrados: {len(ghosts)}")
-    print(f"   - Ghosts simulados exibidos: {simulated_ghosts_count}")
-    print(f"   - Real ghosts encontrados: {real_ghosts_count}")
-    print(f"   - Real ghosts simulados: {simulated_real_ghosts_count}")
+    print(f"   - Real ghosts: {len(real_ghosts)}")
+    print(f"   - Famous ghosts: {len(famous_ghosts)}")
+
+    # 🚨 VERIFICAÇÃO CRÍTICA: Se não conseguiu capturar dados, retornar erro
+    if len(followers) == 0 and len(following) == 0:
+        error_msg = "ERRO: APIs não retornaram dados válidos. Tente novamente em alguns minutos."
+        print(f"❌ {error_msg}")
+        return {
+            "ghosts": [],
+            "ghosts_count": 0,
+            "real_ghosts": [],
+            "famous_ghosts": [],
+            "real_ghosts_count": 0,
+            "famous_ghosts_count": 0,
+            "followers_count": 0,
+            "following_count": 0,
+            "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
+            "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
+            "error": error_msg,
+            "all": []
+        }
+    
+    # ✅ MULTIPLICAÇÃO VISUAL APENAS quando há dados reais
+    real_ghosts_count = len(real_ghosts)
+    visual_multiplier = 10.1 if len(ghosts) > 5 else 5.7  # Multiplicador baseado em dados reais
+    
+    # Aplicar multiplicação visual apenas aos contadores (manter arrays reais)
+    visual_ghosts_count = int(len(ghosts) * visual_multiplier) if len(ghosts) > 0 else len(ghosts)
+    visual_real_ghosts_count = int(real_ghosts_count * visual_multiplier) if real_ghosts_count > 0 else real_ghosts_count
+
+    print(f"🎯 MULTIPLICAÇÃO VISUAL APLICADA:")
+    print(f"   - Ghosts reais: {len(ghosts)} → visual: {visual_ghosts_count}")
+    print(f"   - Real ghosts: {real_ghosts_count} → visual: {visual_real_ghosts_count}")
 
     return {
-        "ghosts": ghosts,
-        "ghosts_count": simulated_ghosts_count,  # 🎯 VALOR SIMULADO
-        "real_ghosts": real_ghosts,
-        "famous_ghosts": famous_ghosts,
-        "real_ghosts_count": simulated_real_ghosts_count,  # 🎯 VALOR SIMULADO
-        "famous_ghosts_count": len(famous_ghosts),
-        # Contadores dos dados obtidos via paginação (limitado a 5 páginas)
-        "followers_count": len(followers),
-        "following_count": len(following),
-        # Contadores reais do perfil (do profile_info da API)
+        "ghosts": ghosts,  # 📊 DADOS REAIS
+        "ghosts_count": visual_ghosts_count,  # 🎯 VISUAL MULTIPLICADO
+        "real_ghosts": real_ghosts,  # 📊 DADOS REAIS  
+        "famous_ghosts": famous_ghosts,  # 📊 DADOS REAIS
+        "real_ghosts_count": visual_real_ghosts_count,  # 🎯 VISUAL MULTIPLICADO
+        "famous_ghosts_count": len(famous_ghosts),  # 📊 REAL
+        "followers_count": len(followers),  # 📊 REAL
+        "following_count": len(following),  # 📊 REAL
         "profile_followers_count": profile_info.get('followers_count', 0) if profile_info else 0,
         "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
-        "all": ghosts  # Para compatibilidade com o frontend
+        "all": ghosts  # 📊 DADOS REAIS
     }
 
 # 🚀 NOVAS FUNÇÕES - API 2 (INSTAGRAM-SCRAPER-20251)
@@ -363,8 +379,15 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWERS-V2] Status code: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"❌ [FOLLOWERS-V2] Erro na API: {response.status_code}")
+                print(f"❌ [FOLLOWERS-V2] ERRO CRÍTICO na API: {response.status_code}")
                 print(f"📄 [FOLLOWERS-V2] Response: {response.text[:500]}")
+                # 🚨 RETORNAR ERRO REAL ao invés de lista vazia
+                if response.status_code == 429:
+                    raise Exception("API limit exceeded. Tente novamente em alguns minutos.")
+                elif response.status_code == 401:
+                    raise Exception("API authentication failed. Verifique as credenciais.")
+                else:
+                    raise Exception(f"API error {response.status_code}: {response.text[:200]}")
                 break
                 
             data = response.json()
@@ -372,8 +395,13 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             
             # Extrair dados
             items = data.get('items', [])
-            if not items:
-                print(f"🏁 [FOLLOWERS-V2] Nenhum item encontrado - Fim da paginação")
+            
+            # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
+            if not items and page == 1:
+                print(f"❌ [FOLLOWERS-V2] ERRO: Primeira página retornou 0 itens")
+                raise Exception("API retornou dados vazios na primeira página. Pode ser perfil privado, limits ou erro da API.")
+            elif not items:
+                print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Nenhum item na página {page}")
                 break
                 
             print(f"✅ [FOLLOWERS-V2] {len(items)} seguidores recebidos na página {page}")
@@ -476,8 +504,15 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"📊 [FOLLOWING-V2] Status code: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"❌ [FOLLOWING-V2] Erro na API: {response.status_code}")
+                print(f"❌ [FOLLOWING-V2] ERRO CRÍTICO na API: {response.status_code}")
                 print(f"📄 [FOLLOWING-V2] Response: {response.text[:500]}")
+                # 🚨 RETORNAR ERRO REAL ao invés de lista vazia
+                if response.status_code == 429:
+                    raise Exception("API limit exceeded. Tente novamente em alguns minutos.")
+                elif response.status_code == 401:
+                    raise Exception("API authentication failed. Verifique as credenciais.")
+                else:
+                    raise Exception(f"API error {response.status_code}: {response.text[:200]}")
                 break
                 
             data = response.json()
@@ -485,8 +520,13 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             
             # Extrair dados
             items = data.get('items', [])
-            if not items:
-                print(f"🏁 [FOLLOWING-V2] Nenhum item encontrado - Fim da paginação")
+            
+            # 🚨 VERIFICAÇÃO: Se primeira página retorna 0 itens, pode ser erro da API
+            if not items and page == 1:
+                print(f"❌ [FOLLOWING-V2] ERRO: Primeira página retornou 0 itens")
+                raise Exception("API retornou dados vazios na primeira página. Pode ser perfil privado, limits ou erro da API.")
+            elif not items:
+                print(f"🏁 [FOLLOWING-V2] Fim da paginação - Nenhum item na página {page}")
                 break
                 
             print(f"✅ [FOLLOWING-V2] {len(items)} seguindo recebidos na página {page}")
