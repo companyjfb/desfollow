@@ -52,7 +52,7 @@ def testar_fluxo_completo(username="jordanbitencourt"):
     print(f"\n📋 2. ACOMPANHANDO PROGRESSO...")
     print("-" * 40)
     
-    max_attempts = 30  # 5 minutos máximo
+    max_attempts = 10  # 🧪 TESTE: 2 minutos máximo
     attempt = 1
     
     while attempt <= max_attempts:

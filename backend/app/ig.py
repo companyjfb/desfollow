@@ -296,6 +296,12 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"   - Ghosts reais encontrados: {len(ghosts)}")
     print(f"   - Real ghosts: {len(real_ghosts)}")
     print(f"   - Famous ghosts: {len(famous_ghosts)}")
+    
+    # 🔍 DEBUG CRÍTICO: Ver o que está chegando nas listas
+    print(f"🔍 DEBUG FINAL - followers type: {type(followers)}, len: {len(followers) if followers else 'None'}")
+    print(f"🔍 DEBUG FINAL - following type: {type(following)}, len: {len(following) if following else 'None'}")
+    print(f"🔍 DEBUG FINAL - followers is None: {followers is None}")
+    print(f"🔍 DEBUG FINAL - following is None: {following is None}")
 
     # 🚨 VERIFICAÇÃO CRÍTICA: Se não conseguiu capturar dados, retornar erro
     if len(followers) == 0 and len(following) == 0:
@@ -455,6 +461,11 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"💾 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários salvos")
             print(f"📊 [FOLLOWERS-V2] Total acumulado: {len(all_followers)} seguidores")
             
+            # 🧪 LIMITE DE TESTE: Apenas 2 páginas por enquanto
+            if page >= 2:
+                print(f"🧪 [FOLLOWERS-V2] LIMITE DE TESTE: Parando na página {page} (máximo 2 páginas)")
+                break
+            
             # Verificar se há próxima página (token está no mesmo nível que 'data')
             pagination_token = data.get('pagination_token')
             if not pagination_token:
@@ -589,6 +600,11 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             total_new_users += page_new_users
             print(f"💾 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários salvos")
             print(f"📊 [FOLLOWING-V2] Total acumulado: {len(all_following)} seguindo")
+            
+            # 🧪 LIMITE DE TESTE: Apenas 2 páginas por enquanto
+            if page >= 2:
+                print(f"🧪 [FOLLOWING-V2] LIMITE DE TESTE: Parando na página {page} (máximo 2 páginas)")
+                break
             
             # Verificar se há próxima página (token está no mesmo nível que 'data')
             pagination_token = data.get('pagination_token')
