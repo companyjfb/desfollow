@@ -203,7 +203,7 @@ const Analyzing = () => {
     };
 
     runAnalysis();
-  }, [username, navigate, getCachedOrFetchScan, saveScanToCache]);
+  }, [username]); // 🚀 CORREÇÃO: Removidas dependências que causam loop infinito
 
   // Captura dados do perfil assim que chegarem - PRIORIDADE MÁXIMA
   useEffect(() => {
