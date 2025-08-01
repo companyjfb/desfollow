@@ -1,12 +1,12 @@
 #!/bin/bash
 
-echo "🔧 CORREÇÃO CORS HTTPS DEFINITIVO - DINÂMICO"
-echo "============================================="
-echo "Configurando CORS dinâmico para ambos domínios HTTPS"
+echo "🔧 CORREÇÃO CORS HTTPS FIXO"
+echo "============================"
+echo "Configurando CORS HTTPS fixo para ambos domínios"
 echo ""
 
 # Backup da configuração atual
-BACKUP_FILE="/etc/nginx/sites-available/desfollow.backup.cors-https-dinamico.$(date +%Y%m%d_%H%M%S)"
+BACKUP_FILE="/etc/nginx/sites-available/desfollow.backup.cors-https-fixo.$(date +%Y%m%d_%H%M%S)"
 sudo cp /etc/nginx/sites-available/desfollow "$BACKUP_FILE"
 echo "💾 Backup: $BACKUP_FILE"
 
@@ -32,19 +32,19 @@ else
 fi
 
 echo ""
-echo "📋 Criando configuração nginx com CORS dinâmico..."
+echo "📋 Criando configuração nginx com CORS HTTPS fixo..."
 
-# Configuração nginx com CORS dinâmico
+# Configuração nginx com CORS HTTPS fixo
 if [ "$CERT_DESFOLLOW" = true ] && [ "$CERT_API" = true ]; then
     echo "📋 Usando configuração completa (ambos certificados existem)"
     
     sudo tee /etc/nginx/sites-available/desfollow > /dev/null << 'EOF'
 # ========================================
-# CONFIGURAÇÃO NGINX - CORS DINÂMICO HTTPS
+# CONFIGURAÇÃO NGINX - CORS HTTPS FIXO
 # ========================================
 # Frontend: desfollow.com.br + www.desfollow.com.br (HTTPS)
 # API: api.desfollow.com.br (HTTPS)
-# CORS: Dinâmico para ambos domínios HTTPS
+# CORS: HTTPS fixo para ambos domínios
 # ========================================
 
 # FRONTEND HTTPS - DESFOLLOW.COM.BR
@@ -175,7 +175,7 @@ server {
     return 301 https://$server_name$request_uri;
 }
 
-# API HTTPS - CORS DINÂMICO PARA AMBOS DOMÍNIOS
+# API HTTPS - CORS HTTPS FIXO PARA AMBOS DOMÍNIOS
 server {
     listen 443 ssl http2;
     server_name api.desfollow.com.br;
@@ -218,24 +218,16 @@ server {
         proxy_request_buffering off;
         client_max_body_size 10m;
         
-        # 🚀 CORS DINÂMICO - DETECTA ORIGEM AUTOMATICAMENTE
+        # 🚀 CORS HTTPS FIXO - AMBOS DOMÍNIOS
         # CORS para requests normais (GET, POST, etc.)
-        set $cors_origin "";
-        if ($http_origin ~* "^https://(www\.)?desfollow\.com\.br$") {
-            set $cors_origin $http_origin;
-        }
-        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
         add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
         add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
         add_header Access-Control-Allow-Credentials true always;
         
-        # Preflight OPTIONS - CORS dinâmico
+        # Preflight OPTIONS - CORS fixo
         if ($request_method = 'OPTIONS') {
-            set $cors_origin "";
-            if ($http_origin ~* "^https://(www\.)?desfollow\.com\.br$") {
-                set $cors_origin $http_origin;
-            }
-            add_header Access-Control-Allow-Origin $cors_origin always;
+            add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
             add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
             add_header Access-Control-Max-Age 1728000 always;
@@ -262,7 +254,7 @@ elif [ "$CERT_API" = true ]; then
 # ========================================
 # Frontend: desfollow.com.br + www.desfollow.com.br (HTTP)
 # API: api.desfollow.com.br (HTTPS)
-# CORS: Dinâmico para ambos domínios HTTP
+# CORS: HTTPS fixo para ambos domínios
 # ========================================
 
 # FRONTEND HTTP - DESFOLLOW.COM.BR
@@ -358,7 +350,7 @@ server {
     return 301 https://$server_name$request_uri;
 }
 
-# API HTTPS - CORS DINÂMICO PARA AMBOS DOMÍNIOS
+# API HTTPS - CORS HTTPS FIXO PARA AMBOS DOMÍNIOS
 server {
     listen 443 ssl http2;
     server_name api.desfollow.com.br;
@@ -401,24 +393,16 @@ server {
         proxy_request_buffering off;
         client_max_body_size 10m;
         
-        # 🚀 CORS DINÂMICO - DETECTA ORIGEM AUTOMATICAMENTE
+        # 🚀 CORS HTTPS FIXO - AMBOS DOMÍNIOS
         # CORS para requests normais (GET, POST, etc.)
-        set $cors_origin "";
-        if ($http_origin ~* "^http://(www\.)?desfollow\.com\.br$") {
-            set $cors_origin $http_origin;
-        }
-        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
         add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
         add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
         add_header Access-Control-Allow-Credentials true always;
         
-        # Preflight OPTIONS - CORS dinâmico
+        # Preflight OPTIONS - CORS fixo
         if ($request_method = 'OPTIONS') {
-            set $cors_origin "";
-            if ($http_origin ~* "^http://(www\.)?desfollow\.com\.br$") {
-                set $cors_origin $http_origin;
-            }
-            add_header Access-Control-Allow-Origin $cors_origin always;
+            add_header Access-Control-Allow-Origin "https://desfollow.com.br" always;
             add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
             add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;
             add_header Access-Control-Max-Age 1728000 always;
@@ -449,7 +433,7 @@ else
     exit 0
 fi
 
-echo "✅ Configuração nginx com CORS dinâmico criada"
+echo "✅ Configuração nginx com CORS HTTPS fixo criada"
 
 echo ""
 echo "📋 Testando configuração..."
@@ -485,7 +469,7 @@ else
 fi
 
 echo ""
-echo "📋 Testando CORS dinâmico para ambos domínios..."
+echo "📋 Testando CORS HTTPS fixo para ambos domínios..."
 
 sleep 2
 
@@ -517,7 +501,7 @@ cd /root/desfollow
 python3 testar_comunicacao_frontend_backend.py
 
 echo ""
-echo "✅ CORS DINÂMICO HTTPS CONFIGURADO!"
+echo "✅ CORS HTTPS FIXO CONFIGURADO!"
 echo ""
 if [ "$CERT_DESFOLLOW" = true ]; then
     echo "🔗 CONFIGURAÇÃO FINAL:"
@@ -541,11 +525,11 @@ fi
 echo ""
 echo "⚙️ MELHORIAS ATIVAS:"
 echo "   ✅ SSL: Usando certificados existentes"
-echo "   ✅ CORS: Dinâmico (detecta origem automaticamente)"
+echo "   ✅ CORS: HTTPS fixo (sempre https://desfollow.com.br)"
 echo "   ✅ Roteamento: Frontend em ambos domínios"
 echo "   ✅ Timeout API: 300s (5 minutos)"
 echo "   ✅ Proxy buffering: Desabilitado"
 echo ""
 echo "📜 Backup salvo em: $BACKUP_FILE"
 echo ""
-echo "🚀 CORS DINÂMICO HTTPS FUNCIONANDO!" 
+echo "🚀 CORS HTTPS FIXO FUNCIONANDO!" 
