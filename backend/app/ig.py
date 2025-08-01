@@ -316,24 +316,22 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
             "all": []
         }
     
-    # ✅ MULTIPLICAÇÃO VISUAL APENAS quando há dados reais
+    # ✅ RETORNAR APENAS DADOS REAIS (sem multiplicação falsa)
     real_ghosts_count = len(real_ghosts)
-    visual_multiplier = 10.1 if len(ghosts) > 5 else 5.7  # Multiplicador baseado em dados reais
     
-    # Aplicar multiplicação visual apenas aos contadores (manter arrays reais)
-    visual_ghosts_count = int(len(ghosts) * visual_multiplier) if len(ghosts) > 0 else len(ghosts)
-    visual_real_ghosts_count = int(real_ghosts_count * visual_multiplier) if real_ghosts_count > 0 else real_ghosts_count
-
-    print(f"🎯 MULTIPLICAÇÃO VISUAL APLICADA:")
-    print(f"   - Ghosts reais: {len(ghosts)} → visual: {visual_ghosts_count}")
-    print(f"   - Real ghosts: {real_ghosts_count} → visual: {visual_real_ghosts_count}")
+    print(f"🎯 DADOS REAIS FINAIS:")
+    print(f"   - Total ghosts: {len(ghosts)}")
+    print(f"   - Real ghosts: {real_ghosts_count}")
+    print(f"   - Famous ghosts: {len(famous_ghosts)}")
+    print(f"   - Followers capturados: {len(followers)}")
+    print(f"   - Following capturados: {len(following)}")
 
     return {
         "ghosts": ghosts,  # 📊 DADOS REAIS
-        "ghosts_count": visual_ghosts_count,  # 🎯 VISUAL MULTIPLICADO
+        "ghosts_count": len(ghosts),  # 📊 VALOR REAL
         "real_ghosts": real_ghosts,  # 📊 DADOS REAIS  
         "famous_ghosts": famous_ghosts,  # 📊 DADOS REAIS
-        "real_ghosts_count": visual_real_ghosts_count,  # 🎯 VISUAL MULTIPLICADO
+        "real_ghosts_count": real_ghosts_count,  # 📊 VALOR REAL
         "famous_ghosts_count": len(famous_ghosts),  # 📊 REAL
         "followers_count": len(followers),  # 📊 REAL
         "following_count": len(following),  # 📊 REAL

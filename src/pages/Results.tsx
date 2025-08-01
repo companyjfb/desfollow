@@ -183,11 +183,11 @@ const Results = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 🎯 SIMULAÇÃO VISUAL: Multiplicar valores exibidos (manter cards reais)
-  const rawCount = scanData?.count || scanData?.ghosts_count || 28;
-  const totalGhosts = Math.floor(rawCount * 10.1); // 24 -> 242 (10.1x multiplier)
+  // ✅ MOSTRAR VALORES REAIS (sem multiplicação falsa)
+  const rawCount = scanData?.count || scanData?.ghosts_count || 0;
+  const totalGhosts = rawCount; // Mostrar valor real dos parasitas
   
-  console.log('🎯 SIMULAÇÃO FRONTEND:', { 
+  console.log('✅ DADOS REAIS FRONTEND:', { 
     rawCount, 
     totalGhosts, 
     scanDataCount: scanData?.count,
