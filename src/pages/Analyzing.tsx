@@ -112,11 +112,11 @@ const Analyzing = () => {
         const maxAttempts = 120; // 10 minutos máximo
         
         const getPollingInterval = (attempt: number) => {
-          // 🔧 Backoff otimizado: 5s, 5s, 8s, 12s, 15s...
-          if (attempt < 2) return 5000;    // Primeiros 2: 5 segundos
-          if (attempt < 4) return 8000;    // Próximos 2: 8 segundos  
-          if (attempt < 6) return 12000;   // Próximos 2: 12 segundos
-          return 15000;                    // Restante: 15 segundos
+          // 🔧 Backoff otimizado: 10s, 15s, 20s, 30s...
+          if (attempt < 2) return 10000;   // Primeiros 2: 10 segundos
+          if (attempt < 4) return 15000;   // Próximos 2: 15 segundos  
+          if (attempt < 6) return 20000;   // Próximos 2: 20 segundos
+          return 30000;                    // Restante: 30 segundos
         };
         
         const pollWithBackoff = async () => {
@@ -128,7 +128,7 @@ const Analyzing = () => {
             setScanStatus(status);
             
             // Log menos verboso
-            if (attempts % 5 === 0) { // Log a cada 5 tentativas
+            if (attempts % 3 === 0) { // Log a cada 3 tentativas
               console.log(`🔄 [${attempts}] Status: ${status.status}, Profile: ${status.profile_info?.followers_count || 0} seguidores`);
             }
             

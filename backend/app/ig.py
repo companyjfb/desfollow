@@ -1,6 +1,8 @@
 import requests
 import os
 import asyncio
+import json
+from datetime import datetime
 from typing import List, Dict, Any
 import re
 from .database import get_or_create_user, get_db, UserFollower, User
@@ -351,7 +353,7 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
 async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Dict]:
     """
     🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
-    Busca TODOS os seguidores até acabar (muito mais eficiente que a API antiga).
+    Busca seguidores com limite de páginas para evitar loops infinitos.
     """
     print(f"🚀 [FOLLOWERS-V2] Iniciando busca com nova API para user_id: {user_id}")
     
@@ -359,14 +361,15 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
+    max_pages = 20  # Limite de 20 páginas para evitar loops infinitos
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
         'x-rapidapi-key': RAPIDAPI_KEY
     }
     
-    while True:
-        print(f"📱 [FOLLOWERS-V2] === PÁGINA {page} ===")
+    while page <= max_pages:
+        print(f"📱 [FOLLOWERS-V2] === PÁGINA {page}/{max_pages} ===")
         
         try:
             # Montar URL e parâmetros
@@ -496,9 +499,9 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                 print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem pagination_token")
                 break
             
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 100 páginas para evitar loops infinitos
-            if page > 100:
-                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em 100 páginas")
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 20 páginas para evitar loops infinitos
+            if page > max_pages:
+                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em {max_pages} páginas")
                 break
                 
         except Exception as e:
@@ -509,12 +512,29 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
     print(f"📊 [FOLLOWERS-V2] Total de seguidores capturados: {len(all_followers)}")
     print(f"📊 [FOLLOWERS-V2] Páginas processadas: {page - 1}")
     
+    # Salvar log detalhado
+    log_data = {
+        "user_id": user_id,
+        "total_followers": len(all_followers),
+        "pages_processed": page - 1,
+        "max_pages": max_pages,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Salvar em arquivo de log
+    try:
+        with open(f"/var/log/desfollow/scan_followers_{user_id}.json", "w") as f:
+            json.dump(log_data, f, indent=2)
+        print(f"📝 Log salvo: /var/log/desfollow/scan_followers_{user_id}.json")
+    except Exception as e:
+        print(f"❌ Erro ao salvar log: {e}")
+    
     return all_followers
 
 async def get_following_with_new_api(user_id: str, db_session = None) -> List[Dict]:
     """
     🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
-    Busca TODOS os seguindo até acabar (muito mais eficiente que a API antiga).
+    Busca seguindo com limite de páginas para evitar loops infinitos.
     """
     print(f"🚀 [FOLLOWING-V2] Iniciando busca com nova API para user_id: {user_id}")
     
@@ -522,14 +542,15 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
+    max_pages = 20  # Limite de 20 páginas para evitar loops infinitos
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
         'x-rapidapi-key': RAPIDAPI_KEY
     }
     
-    while True:
-        print(f"👥 [FOLLOWING-V2] === PÁGINA {page} ===")
+    while page <= max_pages:
+        print(f"👥 [FOLLOWING-V2] === PÁGINA {page}/{max_pages} ===")
         
         try:
             # Montar URL e parâmetros
@@ -671,6 +692,23 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
     print(f"✅ [FOLLOWING-V2] BUSCA CONCLUÍDA!")
     print(f"📊 [FOLLOWING-V2] Total de seguindo capturados: {len(all_following)}")
     print(f"📊 [FOLLOWING-V2] Páginas processadas: {page - 1}")
+    
+    # Salvar log detalhado
+    log_data = {
+        "user_id": user_id,
+        "total_following": len(all_following),
+        "pages_processed": page - 1,
+        "max_pages": max_pages,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Salvar em arquivo de log
+    try:
+        with open(f"/var/log/desfollow/scan_following_{user_id}.json", "w") as f:
+            json.dump(log_data, f, indent=2)
+        print(f"📝 Log salvo: /var/log/desfollow/scan_following_{user_id}.json")
+    except Exception as e:
+        print(f"❌ Erro ao salvar log: {e}")
     
     return all_following
 
