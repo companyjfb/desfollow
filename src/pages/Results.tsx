@@ -71,6 +71,9 @@ const Results = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [fromCache, setFromCache] = useState(location.state?.fromCache || false);
   
+  // ✅ REGRA ESPECIAL: jordanbitencourt vê todos os resultados
+  const isSpecialUser = username === 'jordanbitencourt';
+  
   // Buscar dados se não estão disponíveis no state
   useEffect(() => {
     const loadScanData = async () => {
@@ -167,17 +170,26 @@ const Results = () => {
     );
   }
   
-  // Mostra apenas os primeiros 4 perfis
-  const visibleProfiles = allGhosts.slice(0, 4).map(user => ({
-    name: user.username,
-    fullName: user.full_name,
-    avatar: user.profile_pic_url || "/placeholder.svg",
-    isPrivate: user.is_private,
-    isVerified: user.is_verified,
-    type: user.type
-  }));
+  // Mostra apenas os primeiros 4 perfis (ou todos para jordanbitencourt)
+  const visibleProfiles = isSpecialUser 
+    ? allGhosts.map(user => ({
+        name: user.username,
+        fullName: user.full_name,
+        avatar: user.profile_pic_url || "/placeholder.svg",
+        isPrivate: user.is_private,
+        isVerified: user.is_verified,
+        type: user.type
+      }))
+    : allGhosts.slice(0, 4).map(user => ({
+        name: user.username,
+        fullName: user.full_name,
+        avatar: user.profile_pic_url || "/placeholder.svg",
+        isPrivate: user.is_private,
+        isVerified: user.is_verified,
+        type: user.type
+      }));
 
-  // Perfis bloqueados (simulados)
+  // Perfis bloqueados (simulados) - apenas para usuários normais
   const blurredProfiles = Array.from({ length: 8 }, (_, i) => ({
     name: `user_${i + 1}`,
     avatar: `/lovable-uploads/${['c86c9416-e19f-4e6c-b96a-981764455220.png', 'a1ff2d2a-90ed-4aca-830b-0fa8e772a3ad.png', 'e4cc8fae-cf86-4234-83bc-7a4cbb3e3537.png'][i % 3]}`
@@ -190,7 +202,7 @@ const Results = () => {
   // ✅ MOSTRAR VALORES REAIS (sem multiplicação falsa)
   const rawCount = scanData?.count || 0;
   // ❌ REMOVER DADOS SIMULADOS: Usar apenas dados reais
-  const totalGhosts = scanData?.ghosts_count || 0;
+  const totalGhosts = scanData?.count || 0;
   const realGhostsCount = scanData?.real_ghosts_count || 0;
   const famousGhostsCount = scanData?.famous_ghosts_count || 0;
   const followersCount = scanData?.followers_count || 0;  // Dados analisados
@@ -399,8 +411,8 @@ const Results = () => {
               </div>
             )}
 
-            {/* Locked Profiles Grid - Mostra quando há mais de 4 ghosts */}
-            {totalGhosts > 4 && (
+            {/* Locked Profiles Grid - Mostra quando há mais de 4 ghosts (apenas para usuários normais) */}
+            {totalGhosts > 4 && !isSpecialUser && (
               <>
                 <h4 className="text-lg font-bold text-white mb-4">🔒 Mais Perfis Bloqueados</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -439,56 +451,58 @@ const Results = () => {
             )}
           </div>
 
-          {/* Upgrade CTA */}
-          <div className="bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 text-center shadow-2xl">
-            <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
-                <Crown className="w-10 h-10 text-white" />
+          {/* Upgrade CTA - apenas para usuários normais */}
+          {!isSpecialUser && (
+            <div className="bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 text-center shadow-2xl">
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
+                  <Crown className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold text-white mb-3">Desbloqueie a Lista Completa</h3>
+                <p className="text-white/90 text-xl mb-2">Veja todos os {totalGhosts} perfis que não te seguem de volta</p>
               </div>
-              <h3 className="text-3xl font-bold text-white mb-3">Desbloqueie a Lista Completa</h3>
-              <p className="text-white/90 text-xl mb-2">Veja todos os {totalGhosts} perfis que não te seguem de volta</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
-                <div className="text-4xl font-bold text-yellow-400 mb-2">{totalGhosts}</div>
-                <div className="text-white text-base font-medium">Parasitas</div>
-              </div>
-              <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
-                <div className="text-4xl font-bold text-yellow-400 mb-2">100%</div>
-                <div className="text-white text-base font-medium">Precisão</div>
-              </div>
-              <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
-                <div className="text-4xl font-bold text-yellow-400 mb-2">30d</div>
-                <div className="text-white text-base font-medium">Garantia</div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <Button
-                onClick={scrollToTop}
-                className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"
-              >
-                <Zap className="w-6 h-6 mr-3" />
-                Desbloquear por R$ 29
-              </Button>
               
-              <div className="flex items-center justify-center space-x-8 text-white/80 text-base">
-                <div className="flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Pagamento seguro
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
+                  <div className="text-4xl font-bold text-yellow-400 mb-2">{totalGhosts}</div>
+                  <div className="text-white text-base font-medium">Parasitas</div>
                 </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Garantia 30 dias
+                <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
+                  <div className="text-4xl font-bold text-yellow-400 mb-2">100%</div>
+                  <div className="text-white text-base font-medium">Precisão</div>
                 </div>
-                <div className="flex items-center">
-                  <Star className="w-5 h-5 mr-2" />
-                  4.9/5 avaliação
+                <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
+                  <div className="text-4xl font-bold text-yellow-400 mb-2">30d</div>
+                  <div className="text-white text-base font-medium">Garantia</div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <Button
+                  onClick={scrollToTop}
+                  className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"
+                >
+                  <Zap className="w-6 h-6 mr-3" />
+                  Desbloquear por R$ 29
+                </Button>
+                
+                <div className="flex items-center justify-center space-x-8 text-white/80 text-base">
+                  <div className="flex items-center">
+                    <Shield className="w-5 h-5 mr-2" />
+                    Pagamento seguro
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    Garantia 30 dias
+                  </div>
+                  <div className="flex items-center">
+                    <Star className="w-5 h-5 mr-2" />
+                    4.9/5 avaliação
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
