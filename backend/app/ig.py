@@ -247,9 +247,13 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     # 🚀 Obter seguidores e seguindo com API v2 + LOGS DETALHADOS
     print(f"🚀 Iniciando busca de seguidores com API v2...")
     followers = await get_followers_with_new_api(user_id, db_session)
+    print(f"🔍 DEBUG - followers retornados: {len(followers) if followers else 0} usuários")
+    print(f"🔍 DEBUG - followers type: {type(followers)}")
     
     print(f"🚀 Iniciando busca de seguindo com API v2...")
     following = await get_following_with_new_api(user_id, db_session)
+    print(f"🔍 DEBUG - following retornados: {len(following) if following else 0} usuários")
+    print(f"🔍 DEBUG - following type: {type(following)}")
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
