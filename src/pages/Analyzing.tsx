@@ -93,9 +93,9 @@ const Analyzing = () => {
         const jobId = await startScan(username);
         console.log('Job iniciado:', jobId);
         
-        // Progresso baseado no tempo - chega a 90% em 45 segundos
+        // Progresso baseado no tempo - chega a 90% em 8 minutos
         const startTime = Date.now();
-        const duration = 45000; // 45 segundos para chegar a 90%
+        const duration = 480000; // 8 minutos (480 segundos) para chegar a 90%
         const targetProgress = 90;
         
         const progressInterval = setInterval(() => {
@@ -250,8 +250,8 @@ const Analyzing = () => {
     console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
     
     const startTime = Date.now();
-    const duration = 15000; // 🚀 ACELERADO: 15 segundos para completar (era 30)
-    const delayBeforeParasites = 8000; // 🚀 ACELERADO: 8 segundos de delay para parasitas (era 15)
+    const duration = 180000; // 🚀 ACELERADO: 3 minutos para completar
+    const delayBeforeParasites = 120000; // 🚀 ACELERADO: 2 minutos de delay para parasitas
     
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -308,9 +308,9 @@ const Analyzing = () => {
   // Fallback para progresso simulado se não houver status real
   useEffect(() => {
     if (!scanStatus) {
-      // Progresso baseado no tempo - chega a 90% em 45 segundos
+      // Progresso baseado no tempo - chega a 90% em 8 minutos
       const startTime = Date.now();
-      const duration = 45000; // 45 segundos para chegar a 90%
+      const duration = 480000; // 8 minutos (480 segundos) para chegar a 90%
       const targetProgress = 90;
       
       const interval = setInterval(() => {
