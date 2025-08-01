@@ -261,34 +261,44 @@ def status(job_id: str, db: Session = Depends(get_db)):
             )
         
         if scan.status == "done":
-            return StatusResponse(
-                status="done",
-                count=scan.ghosts_count,
-                sample=scan.ghosts_data[:10] if scan.ghosts_data else [],
-                all=scan.ghosts_data,
-                real_ghosts=scan.real_ghosts,
-                famous_ghosts=scan.famous_ghosts,
-                real_ghosts_count=scan.real_ghosts_count,
-                famous_ghosts_count=scan.famous_ghosts_count,
-                followers_count=scan.followers_count,  # Quantos analisamos
-                following_count=scan.following_count,  # Quantos analisamos
-                profile_followers_count=scan.profile_followers_count,  # Total do perfil
-                profile_following_count=scan.profile_following_count,  # Total do perfil
-                profile_info=scan.profile_info
-            )
-        
-        # Retorna status com dados do perfil se disponíveis
-        return StatusResponse(
-            status=scan.status,
-            profile_info=scan.profile_info,
-            count=scan.ghosts_count or 0,
-            real_ghosts_count=scan.real_ghosts_count or 0,
-            famous_ghosts_count=scan.famous_ghosts_count or 0,
-            followers_count=scan.followers_count or 0,
-            following_count=scan.following_count or 0,
-            profile_followers_count=scan.profile_followers_count or 0,
-            profile_following_count=scan.profile_following_count or 0
-        )
+            # ✅ REGRA ESPECIAL: jordanbitencourt vê todos os dados
+            is_special_user = scan.username == 'jordanbitencourt'
+            
+            # Para usuário especial, retornar TODOS os dados
+            if is_special_user:
+                print(f"🎯 Usuário especial detectado: {scan.username} - retornando TODOS os dados")
+                return StatusResponse(
+                    status="done",
+                    count=scan.ghosts_count,
+                    sample=scan.ghosts_data,  # TODOS os dados, não apenas 10
+                    all=scan.ghosts_data,
+                    real_ghosts=scan.real_ghosts,
+                    famous_ghosts=scan.famous_ghosts,
+                    real_ghosts_count=scan.real_ghosts_count,
+                    famous_ghosts_count=scan.famous_ghosts_count,
+                    followers_count=scan.followers_count,  # Quantos analisamos
+                    following_count=scan.following_count,  # Quantos analisamos
+                    profile_followers_count=scan.profile_followers_count,  # Total do perfil
+                    profile_following_count=scan.profile_following_count,  # Total do perfil
+                    profile_info=scan.profile_info
+                )
+            else:
+                # Para usuários normais, limitar a 10 amostras
+                return StatusResponse(
+                    status="done",
+                    count=scan.ghosts_count,
+                    sample=scan.ghosts_data[:10] if scan.ghosts_data else [],
+                    all=scan.ghosts_data,
+                    real_ghosts=scan.real_ghosts,
+                    famous_ghosts=scan.famous_ghosts,
+                    real_ghosts_count=scan.real_ghosts_count,
+                    famous_ghosts_count=scan.famous_ghosts_count,
+                    followers_count=scan.followers_count,  # Quantos analisamos
+                    following_count=scan.following_count,  # Quantos analisamos
+                    profile_followers_count=scan.profile_followers_count,  # Total do perfil
+                    profile_following_count=scan.profile_following_count,  # Total do perfil
+                    profile_info=scan.profile_info
+                )
     
     # Se não encontrou no banco, verificar no cache
     job_data = get_job(job_id)
@@ -313,21 +323,44 @@ def status(job_id: str, db: Session = Depends(get_db)):
         )
     
     if job_data["status"] == "done":
-        return StatusResponse(
-            status="done",
-            count=job_data["count"],
-            sample=job_data["all"][:10] if job_data.get("all") else [],
-            all=job_data["all"],
-            real_ghosts=job_data["real_ghosts"],
-            famous_ghosts=job_data["famous_ghosts"],
-            real_ghosts_count=job_data["real_ghosts_count"],
-            famous_ghosts_count=job_data["famous_ghosts_count"],
-            followers_count=job_data.get("followers_count", 0),
-            following_count=job_data.get("following_count", 0),
-            profile_followers_count=job_data.get("profile_followers_count", 0),
-            profile_following_count=job_data.get("profile_following_count", 0),
-            profile_info=job_data["profile_info"]
-        )
+        # ✅ REGRA ESPECIAL: jordanbitencourt vê todos os dados
+        username_from_cache = job_data.get("profile_info", {}).get("username", "")
+        is_special_user = username_from_cache == 'jordanbitencourt'
+        
+        if is_special_user:
+            print(f"🎯 Usuário especial detectado no cache: {username_from_cache} - retornando TODOS os dados")
+            return StatusResponse(
+                status="done",
+                count=job_data["count"],
+                sample=job_data["all"],  # TODOS os dados, não apenas 10
+                all=job_data["all"],
+                real_ghosts=job_data["real_ghosts"],
+                famous_ghosts=job_data["famous_ghosts"],
+                real_ghosts_count=job_data["real_ghosts_count"],
+                famous_ghosts_count=job_data["famous_ghosts_count"],
+                followers_count=job_data.get("followers_count", 0),
+                following_count=job_data.get("following_count", 0),
+                profile_followers_count=job_data.get("profile_followers_count", 0),
+                profile_following_count=job_data.get("profile_following_count", 0),
+                profile_info=job_data["profile_info"]
+            )
+        else:
+            # Para usuários normais, limitar a 10 amostras
+            return StatusResponse(
+                status="done",
+                count=job_data["count"],
+                sample=job_data["all"][:10] if job_data.get("all") else [],
+                all=job_data["all"],
+                real_ghosts=job_data["real_ghosts"],
+                famous_ghosts=job_data["famous_ghosts"],
+                real_ghosts_count=job_data["real_ghosts_count"],
+                famous_ghosts_count=job_data["famous_ghosts_count"],
+                followers_count=job_data.get("followers_count", 0),
+                following_count=job_data.get("following_count", 0),
+                profile_followers_count=job_data.get("profile_followers_count", 0),
+                profile_following_count=job_data.get("profile_following_count", 0),
+                profile_info=job_data["profile_info"]
+            )
     
     # Retorna status com dados do perfil se disponíveis
     return StatusResponse(

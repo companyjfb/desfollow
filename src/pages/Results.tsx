@@ -74,6 +74,14 @@ const Results = () => {
   // ✅ REGRA ESPECIAL: jordanbitencourt vê todos os resultados
   const isSpecialUser = username === 'jordanbitencourt';
   
+  // 🔍 DEBUG: Log para verificar dados
+  console.log('🔍 DEBUG - Username:', username);
+  console.log('🔍 DEBUG - Is Special User:', isSpecialUser);
+  console.log('🔍 DEBUG - Scan Data:', scanData);
+  console.log('🔍 DEBUG - Real Ghosts:', scanData?.real_ghosts?.length || 0);
+  console.log('🔍 DEBUG - Famous Ghosts:', scanData?.famous_ghosts?.length || 0);
+  console.log('🔍 DEBUG - Total Ghosts:', scanData?.count || 0);
+  
   // Buscar dados se não estão disponíveis no state
   useEffect(() => {
     const loadScanData = async () => {
