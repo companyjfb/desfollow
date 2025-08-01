@@ -427,6 +427,12 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                 
             print(f"✅ [FOLLOWERS-V2] {len(items)} seguidores recebidos na página {page}")
             
+            # 🚨 VERIFICAÇÃO: Se recebeu menos items que o count, pode ser fim dos dados
+            # Mas vamos continuar por mais algumas páginas para garantir
+            if len(items) < 50 and page > 1:
+                print(f"⚠️ [FOLLOWERS-V2] Recebeu apenas {len(items)} items (menos que 50)")
+                print(f"🔄 [FOLLOWERS-V2] Continuando por mais algumas páginas para garantir...")
+            
             # Processar usuários
             page_new_users = 0
             for i, user in enumerate(items):
@@ -459,16 +465,28 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             
             # Verificar se há mais páginas
             pagination_token = api_data.get('pagination_token')
-            if not pagination_token:
+            
+            # 🚨 CORREÇÃO: Continuar até realmente acabar
+            # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
+            # mas ainda há mais dados. Vamos continuar se recebemos items nesta página
+            if not pagination_token and len(items) > 0:
+                print(f"⚠️ [FOLLOWERS-V2] Sem pagination_token mas recebeu {len(items)} items")
+                print(f"🔄 [FOLLOWERS-V2] Continuando para próxima página...")
+                page += 1
+                continue
+            elif not pagination_token and len(items) == 0:
+                print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem token e sem items")
+                break
+            elif pagination_token:
+                print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
+                page += 1
+            else:
                 print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem pagination_token")
                 break
             
-            print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
-            page += 1
-            
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
-            if page > 50:
-                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em 50 páginas")
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 100 páginas para evitar loops infinitos
+            if page > 100:
+                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em 100 páginas")
                 break
                 
         except Exception as e:
@@ -560,6 +578,12 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                 
             print(f"✅ [FOLLOWING-V2] {len(items)} seguindo recebidos na página {page}")
             
+            # 🚨 VERIFICAÇÃO: Se recebeu menos items que o count, pode ser fim dos dados
+            # Mas vamos continuar por mais algumas páginas para garantir
+            if len(items) < 50 and page > 1:
+                print(f"⚠️ [FOLLOWING-V2] Recebeu apenas {len(items)} items (menos que 50)")
+                print(f"🔄 [FOLLOWING-V2] Continuando por mais algumas páginas para garantir...")
+            
             # Processar usuários
             page_new_users = 0
             for i, user in enumerate(items):
@@ -592,16 +616,28 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             
             # Verificar se há mais páginas
             pagination_token = api_data.get('pagination_token')
-            if not pagination_token:
+            
+            # 🚨 CORREÇÃO: Continuar até realmente acabar
+            # Se não há pagination_token mas ainda há items, pode ser que a API não retornou token
+            # mas ainda há mais dados. Vamos continuar se recebemos items nesta página
+            if not pagination_token and len(items) > 0:
+                print(f"⚠️ [FOLLOWING-V2] Sem pagination_token mas recebeu {len(items)} items")
+                print(f"🔄 [FOLLOWING-V2] Continuando para próxima página...")
+                page += 1
+                continue
+            elif not pagination_token and len(items) == 0:
+                print(f"🏁 [FOLLOWING-V2] Fim da paginação - Sem token e sem items")
+                break
+            elif pagination_token:
+                print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
+                page += 1
+            else:
                 print(f"🏁 [FOLLOWING-V2] Fim da paginação - Sem pagination_token")
                 break
             
-            print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
-            page += 1
-            
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
-            if page > 50:
-                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em 50 páginas")
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 100 páginas para evitar loops infinitos
+            if page > 100:
+                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em 100 páginas")
                 break
                 
         except Exception as e:
