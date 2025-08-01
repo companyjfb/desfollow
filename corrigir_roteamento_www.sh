@@ -45,7 +45,7 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'; img-src 'self' data: blob: https://*.cdninstagram.com https://*.instagram.com https://*.fbcdn.net;" always;
     
     # Configuração para SPA (Single Page Application)
     location / {
@@ -62,6 +62,21 @@ server {
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+    
+    # Configuração para imagens do Instagram (permitir CORS)
+    location ~* \.(png|jpg|jpeg|gif|webp)$ {
+        # Headers CORS específicos para imagens
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range" always;
+        add_header Access-Control-Expose-Headers "Content-Length,Content-Range" always;
+        
+        # Cache para imagens
+        expires 1d;
+        add_header Cache-Control "public, max-age=86400";
+        
         try_files $uri =404;
     }
     
