@@ -5,6 +5,18 @@ from typing import List, Dict, Any
 import re
 from .database import get_or_create_user, get_db, UserFollower, User
 
+# 🔧 CONFIGURAÇÃO APIS HÍBRIDAS
+# API 1: instagram-premium-api-2023 (user_id + profile)
+API_1_HOST = 'instagram-premium-api-2023.p.rapidapi.com'
+API_1_BASE_URL = f'https://{API_1_HOST}/v1'
+
+# API 2: instagram-scraper-20251 (followers + following)  
+API_2_HOST = 'instagram-scraper-20251.p.rapidapi.com'
+API_2_BASE_URL = f'https://{API_2_HOST}'
+
+# Headers comuns
+RAPIDAPI_KEY = 'dcbcbd1a45msh9db02af0ee3b5b2p1f2f71jsne81868330f01'
+
 # Palavras-chave expandidas para detectar perfis famosos/influencers
 FAMOUS_KEYWORDS = [
     # Categorias de conteúdo
@@ -232,12 +244,12 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"✅ User ID obtido: {user_id}")
     print(f"📊 Profile info final: {profile_info.get('followers_count', 0)} seguidores, {profile_info.get('following_count', 0)} seguindo")
     
-    # Obter seguidores e seguindo com paginação otimizada
-    print(f"📱 Iniciando busca de seguidores...")
-    followers = await get_followers_optimized(user_id, db_session)
+    # 🚀 Obter seguidores e seguindo com NOVA API (mais eficiente e completa)
+    print(f"🚀 Iniciando busca de seguidores com API v2...")
+    followers = await get_followers_with_new_api(user_id, db_session)
     
-    print(f"📱 Iniciando busca de seguindo...")
-    following = await get_following_optimized(user_id, db_session)
+    print(f"🚀 Iniciando busca de seguindo com API v2...")
+    following = await get_following_with_new_api(user_id, db_session)
     
     # Identificar ghosts (quem você segue mas não te segue de volta)
     following_usernames = {user['username'] for user in following}
@@ -309,6 +321,236 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
         "profile_following_count": profile_info.get('following_count', 0) if profile_info else 0,
         "all": ghosts  # Para compatibilidade com o frontend
     }
+
+# 🚀 NOVAS FUNÇÕES - API 2 (INSTAGRAM-SCRAPER-20251)
+
+async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Dict]:
+    """
+    🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
+    Busca TODOS os seguidores até acabar (muito mais eficiente que a API antiga).
+    """
+    print(f"🚀 [FOLLOWERS-V2] Iniciando busca com nova API para user_id: {user_id}")
+    
+    all_followers = []
+    pagination_token = None
+    page = 1
+    total_new_users = 0
+    
+    headers = {
+        'x-rapidapi-host': API_2_HOST,
+        'x-rapidapi-key': RAPIDAPI_KEY
+    }
+    
+    while True:
+        print(f"📱 [FOLLOWERS-V2] === PÁGINA {page} ===")
+        
+        try:
+            # Montar URL e parâmetros
+            url = f"{API_2_BASE_URL}/userfollowers/"
+            params = {'username_or_id': user_id}
+            
+            if pagination_token:
+                params['pagination_token'] = pagination_token
+                print(f"🔗 [FOLLOWERS-V2] Usando pagination_token: {pagination_token[:50]}...")
+            else:
+                print(f"🎯 [FOLLOWERS-V2] Primeira página (sem token)")
+            
+            print(f"📡 [FOLLOWERS-V2] URL: {url}")
+            print(f"📝 [FOLLOWERS-V2] Params: {params}")
+            
+            # Fazer requisição
+            response = requests.get(url, params=params, headers=headers)
+            print(f"📊 [FOLLOWERS-V2] Status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ [FOLLOWERS-V2] Erro na API: {response.status_code}")
+                print(f"📄 [FOLLOWERS-V2] Response: {response.text[:500]}")
+                break
+                
+            data = response.json()
+            print(f"📋 [FOLLOWERS-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
+            
+            # Extrair dados
+            items = data.get('items', [])
+            if not items:
+                print(f"🏁 [FOLLOWERS-V2] Nenhum item encontrado - Fim da paginação")
+                break
+                
+            print(f"✅ [FOLLOWERS-V2] {len(items)} seguidores recebidos na página {page}")
+            
+            # Processar usuários
+            page_new_users = 0
+            for i, user in enumerate(items):
+                username = user.get('username')
+                if i < 3:  # Log dos primeiros 3 para debug
+                    print(f"🔍 [FOLLOWERS-V2] User {i+1}: @{username} - {user.get('full_name', 'N/A')}")
+                
+                if not username:
+                    continue
+                    
+                # Evitar duplicatas
+                if any(f['username'] == username for f in all_followers):
+                    continue
+                
+                # Adicionar à lista
+                user_data = {
+                    'id': user.get('id'),
+                    'username': username,
+                    'full_name': user.get('full_name', ''),
+                    'profile_pic_url': user.get('profile_pic_url', ''),
+                    'is_private': user.get('is_private', False),
+                    'is_verified': user.get('is_verified', False)
+                }
+                all_followers.append(user_data)
+                
+                # Salvar no banco
+                if db_session:
+                    try:
+                        get_or_create_user(db_session, username, user_data)
+                        page_new_users += 1
+                    except Exception as e:
+                        print(f"⚠️ [FOLLOWERS-V2] Erro ao salvar @{username}: {e}")
+            
+            total_new_users += page_new_users
+            print(f"💾 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários salvos")
+            print(f"📊 [FOLLOWERS-V2] Total acumulado: {len(all_followers)} seguidores")
+            
+            # Verificar se há próxima página
+            pagination_token = data.get('pagination_token')
+            if not pagination_token:
+                print(f"🏁 [FOLLOWERS-V2] Sem pagination_token - Última página alcançada")
+                break
+                
+            page += 1
+            await asyncio.sleep(1)  # Rate limiting
+            
+        except Exception as e:
+            print(f"💥 [FOLLOWERS-V2] ERRO na página {page}: {e}")
+            import traceback
+            print(f"📋 [FOLLOWERS-V2] Stacktrace: {traceback.format_exc()}")
+            break
+    
+    print(f"\n🎉 [FOLLOWERS-V2] === RESULTADO FINAL ===")
+    print(f"📊 [FOLLOWERS-V2] Total de seguidores: {len(all_followers)}")
+    print(f"💾 [FOLLOWERS-V2] Usuários salvos no banco: {total_new_users}")
+    print(f"📄 [FOLLOWERS-V2] Páginas processadas: {page}")
+    
+    return all_followers
+
+async def get_following_with_new_api(user_id: str, db_session = None) -> List[Dict]:
+    """
+    🎯 Nova implementação: Usa instagram-scraper-20251 com pagination_token correta.
+    Busca TODOS os seguindo até acabar (muito mais eficiente que a API antiga).
+    """
+    print(f"🚀 [FOLLOWING-V2] Iniciando busca com nova API para user_id: {user_id}")
+    
+    all_following = []
+    pagination_token = None
+    page = 1
+    total_new_users = 0
+    
+    headers = {
+        'x-rapidapi-host': API_2_HOST,
+        'x-rapidapi-key': RAPIDAPI_KEY
+    }
+    
+    while True:
+        print(f"👥 [FOLLOWING-V2] === PÁGINA {page} ===")
+        
+        try:
+            # Montar URL e parâmetros
+            url = f"{API_2_BASE_URL}/userfollowing/"
+            params = {'username_or_id': user_id}
+            
+            if pagination_token:
+                params['pagination_token'] = pagination_token
+                print(f"🔗 [FOLLOWING-V2] Usando pagination_token: {pagination_token[:50]}...")
+            else:
+                print(f"🎯 [FOLLOWING-V2] Primeira página (sem token)")
+            
+            print(f"📡 [FOLLOWING-V2] URL: {url}")
+            print(f"📝 [FOLLOWING-V2] Params: {params}")
+            
+            # Fazer requisição
+            response = requests.get(url, params=params, headers=headers)
+            print(f"📊 [FOLLOWING-V2] Status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"❌ [FOLLOWING-V2] Erro na API: {response.status_code}")
+                print(f"📄 [FOLLOWING-V2] Response: {response.text[:500]}")
+                break
+                
+            data = response.json()
+            print(f"📋 [FOLLOWING-V2] Response estrutura: count={data.get('count', 0)}, items={len(data.get('items', []))}")
+            
+            # Extrair dados
+            items = data.get('items', [])
+            if not items:
+                print(f"🏁 [FOLLOWING-V2] Nenhum item encontrado - Fim da paginação")
+                break
+                
+            print(f"✅ [FOLLOWING-V2] {len(items)} seguindo recebidos na página {page}")
+            
+            # Processar usuários
+            page_new_users = 0
+            for i, user in enumerate(items):
+                username = user.get('username')
+                if i < 3:  # Log dos primeiros 3 para debug
+                    print(f"🔍 [FOLLOWING-V2] User {i+1}: @{username} - {user.get('full_name', 'N/A')}")
+                
+                if not username:
+                    continue
+                    
+                # Evitar duplicatas
+                if any(f['username'] == username for f in all_following):
+                    continue
+                
+                # Adicionar à lista
+                user_data = {
+                    'id': user.get('id'),
+                    'username': username,
+                    'full_name': user.get('full_name', ''),
+                    'profile_pic_url': user.get('profile_pic_url', ''),
+                    'is_private': user.get('is_private', False),
+                    'is_verified': user.get('is_verified', False)
+                }
+                all_following.append(user_data)
+                
+                # Salvar no banco
+                if db_session:
+                    try:
+                        get_or_create_user(db_session, username, user_data)
+                        page_new_users += 1
+                    except Exception as e:
+                        print(f"⚠️ [FOLLOWING-V2] Erro ao salvar @{username}: {e}")
+            
+            total_new_users += page_new_users
+            print(f"💾 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários salvos")
+            print(f"📊 [FOLLOWING-V2] Total acumulado: {len(all_following)} seguindo")
+            
+            # Verificar se há próxima página
+            pagination_token = data.get('pagination_token')
+            if not pagination_token:
+                print(f"🏁 [FOLLOWING-V2] Sem pagination_token - Última página alcançada")
+                break
+                
+            page += 1
+            await asyncio.sleep(1)  # Rate limiting
+            
+        except Exception as e:
+            print(f"💥 [FOLLOWING-V2] ERRO na página {page}: {e}")
+            import traceback
+            print(f"📋 [FOLLOWING-V2] Stacktrace: {traceback.format_exc()}")
+            break
+    
+    print(f"\n🎉 [FOLLOWING-V2] === RESULTADO FINAL ===")
+    print(f"📊 [FOLLOWING-V2] Total seguindo: {len(all_following)}")
+    print(f"💾 [FOLLOWING-V2] Usuários salvos no banco: {total_new_users}")
+    print(f"📄 [FOLLOWING-V2] Páginas processadas: {page}")
+    
+    return all_following
+
+# 🔄 FUNÇÕES ANTIGAS (MANTIDAS PARA COMPATIBILIDADE)
 
 async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]:
     """
