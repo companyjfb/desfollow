@@ -273,10 +273,20 @@ async def get_ghosts_with_profile(username: str, profile_info: Dict = None, user
     print(f"   - Ghosts reais: {len(real_ghosts)}")
     print(f"   - Ghosts famosos: {len(famous_ghosts)}")
     
-    # 🎯 SIMULAÇÃO: Multiplicar valores para demonstração (22 -> 126 parasitas)
+    # 🎯 SIMULAÇÃO REALÍSTICA: Ghosts nunca podem ser > seguindo
     real_ghosts_count = len(real_ghosts)
-    simulated_ghosts_count = max(int(len(ghosts) * 5.7), len(ghosts) + 100)  # Garantir pelo menos +100
-    simulated_real_ghosts_count = max(int(real_ghosts_count * 5.7), real_ghosts_count + 90)
+    following_count = len(following)
+    
+    # Simular 80-95% de ghost rate (realístico)
+    if len(ghosts) > 0:
+        # Se já temos ghosts, simular entre 70-90% de ghost rate
+        max_possible_ghosts = following_count
+        simulated_ghosts_count = min(int(following_count * 0.85), max_possible_ghosts)
+        simulated_real_ghosts_count = min(int(simulated_ghosts_count * 0.9), simulated_ghosts_count)
+    else:
+        # Se não temos ghosts, simular uns poucos
+        simulated_ghosts_count = min(5, following_count) 
+        simulated_real_ghosts_count = simulated_ghosts_count
     
     print(f"🎯 SIMULAÇÃO DE VALORES:")
     print(f"   - Ghosts reais encontrados: {len(ghosts)}")
