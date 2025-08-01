@@ -197,6 +197,12 @@ const Results = () => {
         type: user.type
       }));
 
+  // 🔍 DEBUG: Verificar dados processados
+  console.log('🔍 DEBUG - All Ghosts Length:', allGhosts.length);
+  console.log('🔍 DEBUG - Visible Profiles Length:', visibleProfiles.length);
+  console.log('🔍 DEBUG - Is Special User (again):', isSpecialUser);
+  console.log('🔍 DEBUG - All Ghosts Sample:', allGhosts.slice(0, 5));
+
   // Perfis bloqueados (simulados) - apenas para usuários normais
   const blurredProfiles = Array.from({ length: 8 }, (_, i) => ({
     name: `user_${i + 1}`,
