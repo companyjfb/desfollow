@@ -81,135 +81,100 @@ echo "✅ CORS removido do backend"
 echo ""
 echo "📋 Criando configuração nginx com CORS HTTPS fixo..."
 
-# Configuração nginx com CORS HTTPS fixo (sem verificar certificados SSL)
+# Configuração nginx com CORS HTTPS fixo (sem SSL no frontend)
 sudo tee /etc/nginx/sites-available/desfollow > /dev/null << 'EOF'
 # ========================================
 # CONFIGURAÇÃO NGINX - CORS HTTPS FIXO SEM CONFLITO
 # ========================================
-# Frontend: desfollow.com.br + www.desfollow.com.br (HTTPS via Hostinger)
+# Frontend: desfollow.com.br + www.desfollow.com.br (HTTP - SSL via Hostinger)
 # API: api.desfollow.com.br (HTTPS)
 # CORS: Apenas nginx gerencia (sem backend)
 # ========================================
 
-# FRONTEND HTTPS - DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
-server {
-    listen 443 ssl http2;
-    server_name desfollow.com.br;
-    
-    # SSL gerenciado pela Hostinger (não verificar certificados)
-    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
-    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
-    
-    # Configurações SSL seguras
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    
-    # Headers de segurança
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    root /var/www/html;
-    index index.html;
-    
-    access_log /var/log/nginx/frontend_ssl_access.log;
-    error_log /var/log/nginx/frontend_ssl_error.log;
-    
-    # Cache para assets estáticos
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        try_files $uri =404;
-    }
-    
-    # React Router - todas as rotas SPA
-    location / {
-        try_files $uri $uri/ /index.html;
-        
-        # Headers de segurança
-        add_header X-Content-Type-Options nosniff;
-        add_header X-Frame-Options DENY;
-        add_header X-XSS-Protection "1; mode=block";
-    }
-    
-    # Bloquear acesso a arquivos sensíveis
-    location ~ /\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Health check
-    location /health {
-        access_log off;
-        return 200 "Frontend HTTPS OK\n";
-        add_header Content-Type text/plain;
-    }
-}
-
-# FRONTEND HTTPS - WWW.DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
-server {
-    listen 443 ssl http2;
-    server_name www.desfollow.com.br;
-    
-    # SSL gerenciado pela Hostinger (não verificar certificados)
-    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
-    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
-    
-    # Configurações SSL seguras
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-    
-    # Headers de segurança
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    root /var/www/html;
-    index index.html;
-    
-    access_log /var/log/nginx/frontend_www_ssl_access.log;
-    error_log /var/log/nginx/frontend_www_ssl_error.log;
-    
-    # Cache para assets estáticos
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        try_files $uri =404;
-    }
-    
-    # React Router - todas as rotas SPA
-    location / {
-        try_files $uri $uri/ /index.html;
-        
-        # Headers de segurança
-        add_header X-Content-Type-Options nosniff;
-        add_header X-Frame-Options DENY;
-        add_header X-XSS-Protection "1; mode=block";
-    }
-    
-    # Bloquear acesso a arquivos sensíveis
-    location ~ /\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
-    
-    # Health check
-    location /health {
-        access_log off;
-        return 200 "Frontend WWW HTTPS OK\n";
-        add_header Content-Type text/plain;
-    }
-}
-
-# FRONTEND HTTP -> HTTPS REDIRECT
+# FRONTEND HTTP - DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
 server {
     listen 80;
-    server_name desfollow.com.br www.desfollow.com.br;
-    return 301 https://$server_name$request_uri;
+    server_name desfollow.com.br;
+    
+    root /var/www/html;
+    index index.html;
+    
+    access_log /var/log/nginx/frontend_access.log;
+    error_log /var/log/nginx/frontend_error.log;
+    
+    # Cache para assets estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+    
+    # React Router - todas as rotas SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+        
+        # Headers de segurança
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+    }
+    
+    # Bloquear acesso a arquivos sensíveis
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "Frontend HTTP OK\n";
+        add_header Content-Type text/plain;
+    }
+}
+
+# FRONTEND HTTP - WWW.DESFOLLOW.COM.BR (SSL gerenciado pela Hostinger)
+server {
+    listen 80;
+    server_name www.desfollow.com.br;
+    
+    root /var/www/html;
+    index index.html;
+    
+    access_log /var/log/nginx/frontend_www_access.log;
+    error_log /var/log/nginx/frontend_www_error.log;
+    
+    # Cache para assets estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+    
+    # React Router - todas as rotas SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+        
+        # Headers de segurança
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+    }
+    
+    # Bloquear acesso a arquivos sensíveis
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "Frontend WWW HTTP OK\n";
+        add_header Content-Type text/plain;
+    }
 }
 
 # API HTTP -> HTTPS REDIRECT
@@ -224,7 +189,7 @@ server {
     listen 443 ssl http2;
     server_name api.desfollow.com.br;
     
-    # Certificados SSL da API (verificar se existe)
+    # Certificados SSL da API
     ssl_certificate /etc/letsencrypt/live/api.desfollow.com.br/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/api.desfollow.com.br/privkey.pem;
     
@@ -354,13 +319,11 @@ echo ""
 echo "✅ CORS HTTPS FIXO SEM CONFLITO CONFIGURADO!"
 echo ""
 echo "🔗 CONFIGURAÇÃO FINAL:"
-echo "   Frontend: https://desfollow.com.br (HTTPS via Hostinger)"
-echo "   Frontend: https://www.desfollow.com.br (HTTPS via Hostinger)"
+echo "   Frontend: http://desfollow.com.br (HTTP - SSL via Hostinger)"
+echo "   Frontend: http://www.desfollow.com.br (HTTP - SSL via Hostinger)"
 echo "   API:      https://api.desfollow.com.br (HTTPS)"
 echo ""
 echo "🔄 REDIRECIONAMENTOS:"
-echo "   http://desfollow.com.br → https://desfollow.com.br"
-echo "   http://www.desfollow.com.br → https://www.desfollow.com.br"
 echo "   http://api.desfollow.com.br → https://api.desfollow.com.br"
 echo ""
 echo "⚙️ MELHORIAS ATIVAS:"
