@@ -371,7 +371,10 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
         try:
             # Montar URL e parâmetros
             url = f"{API_2_BASE_URL}/userfollowers/"
-            params = {'username_or_id': user_id}
+            params = {
+                'username_or_id': user_id,
+                'count': 50  # 🚀 USAR COUNT 50 POR PADRÃO
+            }
             
             if pagination_token:
                 params['pagination_token'] = pagination_token
@@ -448,43 +451,33 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                     'is_verified': user.get('is_verified', False)
                 }
                 all_followers.append(user_data)
-                
-                # Salvar no banco
-                if db_session:
-                    try:
-                        get_or_create_user(db_session, username, user_data)
-                        page_new_users += 1
-                    except Exception as e:
-                        print(f"⚠️ [FOLLOWERS-V2] Erro ao salvar @{username}: {e}")
+                page_new_users += 1
+                total_new_users += 1
             
-            total_new_users += page_new_users
-            print(f"💾 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários salvos")
-            print(f"📊 [FOLLOWERS-V2] Total acumulado: {len(all_followers)} seguidores")
+            print(f"📊 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários")
+            print(f"📊 [FOLLOWERS-V2] Total acumulado: {total_new_users} usuários")
             
-            # 🧪 LIMITE DE TESTE: Apenas 2 páginas por enquanto
-            if page >= 2:
-                print(f"🧪 [FOLLOWERS-V2] LIMITE DE TESTE: Parando na página {page} (máximo 2 páginas)")
-                break
-            
-            # Verificar se há próxima página (token está no mesmo nível que 'data')
-            pagination_token = data.get('pagination_token')
+            # Verificar se há mais páginas
+            pagination_token = api_data.get('pagination_token')
             if not pagination_token:
-                print(f"🏁 [FOLLOWERS-V2] Sem pagination_token - Última página alcançada")
+                print(f"🏁 [FOLLOWERS-V2] Fim da paginação - Sem pagination_token")
+                break
+            
+            print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
+            page += 1
+            
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
+            if page > 50:
+                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em 50 páginas")
                 break
                 
-            page += 1
-            await asyncio.sleep(1)  # Rate limiting
-            
         except Exception as e:
-            print(f"💥 [FOLLOWERS-V2] ERRO na página {page}: {e}")
-            import traceback
-            print(f"📋 [FOLLOWERS-V2] Stacktrace: {traceback.format_exc()}")
-            break
+            print(f"❌ [FOLLOWERS-V2] ERRO na página {page}: {str(e)}")
+            raise e
     
-    print(f"\n🎉 [FOLLOWERS-V2] === RESULTADO FINAL ===")
-    print(f"📊 [FOLLOWERS-V2] Total de seguidores: {len(all_followers)}")
-    print(f"💾 [FOLLOWERS-V2] Usuários salvos no banco: {total_new_users}")
-    print(f"📄 [FOLLOWERS-V2] Páginas processadas: {page}")
+    print(f"✅ [FOLLOWERS-V2] BUSCA CONCLUÍDA!")
+    print(f"📊 [FOLLOWERS-V2] Total de seguidores capturados: {len(all_followers)}")
+    print(f"📊 [FOLLOWERS-V2] Páginas processadas: {page - 1}")
     
     return all_followers
 
@@ -511,7 +504,10 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
         try:
             # Montar URL e parâmetros
             url = f"{API_2_BASE_URL}/userfollowing/"
-            params = {'username_or_id': user_id}
+            params = {
+                'username_or_id': user_id,
+                'count': 50  # 🚀 USAR COUNT 50 POR PADRÃO
+            }
             
             if pagination_token:
                 params['pagination_token'] = pagination_token
@@ -588,43 +584,33 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                     'is_verified': user.get('is_verified', False)
                 }
                 all_following.append(user_data)
-                
-                # Salvar no banco
-                if db_session:
-                    try:
-                        get_or_create_user(db_session, username, user_data)
-                        page_new_users += 1
-                    except Exception as e:
-                        print(f"⚠️ [FOLLOWING-V2] Erro ao salvar @{username}: {e}")
+                page_new_users += 1
+                total_new_users += 1
             
-            total_new_users += page_new_users
-            print(f"💾 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários salvos")
-            print(f"📊 [FOLLOWING-V2] Total acumulado: {len(all_following)} seguindo")
+            print(f"📊 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários")
+            print(f"📊 [FOLLOWING-V2] Total acumulado: {total_new_users} usuários")
             
-            # 🧪 LIMITE DE TESTE: Apenas 2 páginas por enquanto
-            if page >= 2:
-                print(f"🧪 [FOLLOWING-V2] LIMITE DE TESTE: Parando na página {page} (máximo 2 páginas)")
-                break
-            
-            # Verificar se há próxima página (token está no mesmo nível que 'data')
-            pagination_token = data.get('pagination_token')
+            # Verificar se há mais páginas
+            pagination_token = api_data.get('pagination_token')
             if not pagination_token:
-                print(f"🏁 [FOLLOWING-V2] Sem pagination_token - Última página alcançada")
+                print(f"🏁 [FOLLOWING-V2] Fim da paginação - Sem pagination_token")
+                break
+            
+            print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
+            page += 1
+            
+            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
+            if page > 50:
+                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em 50 páginas")
                 break
                 
-            page += 1
-            await asyncio.sleep(1)  # Rate limiting
-            
         except Exception as e:
-            print(f"💥 [FOLLOWING-V2] ERRO na página {page}: {e}")
-            import traceback
-            print(f"📋 [FOLLOWING-V2] Stacktrace: {traceback.format_exc()}")
-            break
+            print(f"❌ [FOLLOWING-V2] ERRO na página {page}: {str(e)}")
+            raise e
     
-    print(f"\n🎉 [FOLLOWING-V2] === RESULTADO FINAL ===")
-    print(f"📊 [FOLLOWING-V2] Total seguindo: {len(all_following)}")
-    print(f"💾 [FOLLOWING-V2] Usuários salvos no banco: {total_new_users}")
-    print(f"📄 [FOLLOWING-V2] Páginas processadas: {page}")
+    print(f"✅ [FOLLOWING-V2] BUSCA CONCLUÍDA!")
+    print(f"📊 [FOLLOWING-V2] Total de seguindo capturados: {len(all_following)}")
+    print(f"📊 [FOLLOWING-V2] Páginas processadas: {page - 1}")
     
     return all_following
 

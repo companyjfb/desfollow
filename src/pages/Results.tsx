@@ -189,23 +189,16 @@ const Results = () => {
 
   // ✅ MOSTRAR VALORES REAIS (sem multiplicação falsa)
   const rawCount = scanData?.count || 0;
-  const totalGhosts = rawCount; // Mostrar valor real dos parasitas
-  
-  console.log('✅ DADOS REAIS FRONTEND:', { 
-    rawCount, 
-    totalGhosts, 
-    scanDataCount: scanData?.count,
-    followersCount: scanData?.followers_count,
-    followingCount: scanData?.following_count
-  });
-  const realGhostsCount = scanData?.real_ghosts_count || 6;
-  const famousGhostsCount = scanData?.famous_ghosts_count || 22;
+  // ❌ REMOVER DADOS SIMULADOS: Usar apenas dados reais
+  const totalGhosts = scanData?.ghosts_count || 0;
+  const realGhostsCount = scanData?.real_ghosts_count || 0;
+  const famousGhostsCount = scanData?.famous_ghosts_count || 0;
   const followersCount = scanData?.followers_count || 0;  // Dados analisados
   const followingCount = scanData?.following_count || 0;  // Dados analisados
   const profileFollowersCount = scanData?.profile_followers_count || scanData?.profile_info?.followers_count || 0;  // Total do perfil
   const profileFollowingCount = scanData?.profile_following_count || scanData?.profile_info?.following_count || 0;  // Total do perfil
   const lossRate = profileFollowersCount ? 
-    Math.round((totalGhosts / profileFollowersCount) * 100) : 6;
+    Math.round((totalGhosts / profileFollowersCount) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 p-4">

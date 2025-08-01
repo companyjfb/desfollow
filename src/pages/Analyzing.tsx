@@ -250,18 +250,18 @@ const Analyzing = () => {
     console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
     
     const startTime = Date.now();
-    const duration = 30000; // 30 segundos para completar
-    const delayBeforeParasites = 15000; // 15 segundos de delay para parasitas
+    const duration = 15000; // 🚀 ACELERADO: 15 segundos para completar (era 30)
+    const delayBeforeParasites = 8000; // 🚀 ACELERADO: 8 segundos de delay para parasitas (era 15)
     
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
-      // Seguidores: começa a aumentar gradualmente até o valor real em 30 segundos
+      // Seguidores: começa a aumentar gradualmente até o valor real em 15 segundos
       const followersProgress = Math.min(elapsed / duration, 1);
       const currentFollowers = Math.floor(followersProgress * realFollowersCount);
       setSimulatedFollowers(currentFollowers);
       
-      // Parasitas: só começam após 15 segundos, simulando até 22
+      // Parasitas: só começam após 8 segundos, simulando até 22
       if (elapsed < delayBeforeParasites) {
         setSimulatedParasites(0);
       } else {
@@ -275,7 +275,7 @@ const Analyzing = () => {
         setSimulatedParasites(currentParasites);
       }
       
-              console.log('📈 Contagem:', { 
+      console.log('📈 Contagem:', { 
         elapsed: Math.floor(elapsed/1000) + 's', 
         followers: currentFollowers, 
         parasites: elapsed < delayBeforeParasites ? 0 : Math.floor((elapsed - delayBeforeParasites) / (duration - delayBeforeParasites) * 126)
@@ -285,7 +285,7 @@ const Analyzing = () => {
         clearInterval(numbersInterval);
         console.log('✅ Contagem simulada finalizada');
       }
-    }, 100); // Atualiza a cada 100ms para movimento suave
+    }, 50); // 🚀 ACELERADO: Atualiza a cada 50ms para movimento mais rápido (era 100ms)
 
     return () => clearInterval(numbersInterval);
   }, [realFollowersCount]); // REMOVIDO scanStatus?.status para evitar reinicialização
