@@ -455,8 +455,8 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"💾 [FOLLOWERS-V2] Página {page}: {page_new_users} novos usuários salvos")
             print(f"📊 [FOLLOWERS-V2] Total acumulado: {len(all_followers)} seguidores")
             
-            # Verificar se há próxima página
-            pagination_token = api_data.get('pagination_token')
+            # Verificar se há próxima página (token está no mesmo nível que 'data')
+            pagination_token = data.get('pagination_token')
             if not pagination_token:
                 print(f"🏁 [FOLLOWERS-V2] Sem pagination_token - Última página alcançada")
                 break
@@ -590,8 +590,8 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
             print(f"💾 [FOLLOWING-V2] Página {page}: {page_new_users} novos usuários salvos")
             print(f"📊 [FOLLOWING-V2] Total acumulado: {len(all_following)} seguindo")
             
-            # Verificar se há próxima página
-            pagination_token = api_data.get('pagination_token')
+            # Verificar se há próxima página (token está no mesmo nível que 'data')
+            pagination_token = data.get('pagination_token')
             if not pagination_token:
                 print(f"🏁 [FOLLOWING-V2] Sem pagination_token - Última página alcançada")
                 break
