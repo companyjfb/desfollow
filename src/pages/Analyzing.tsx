@@ -430,7 +430,19 @@ const Analyzing = () => {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 bg-clip-text text-transparent">Desfollow</h1>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Analisando @{username}</h2>
-            <p className="text-white/80 text-sm">Aguarde enquanto nossa IA faz a varredura</p>
+            <p className="text-white/80 text-sm mb-4">Aguarde enquanto nossa IA faz a varredura</p>
+            
+            {/* Aviso importante */}
+            <div className="bg-orange-500/20 border border-orange-500/40 rounded-xl p-4 mb-4 max-w-sm mx-auto">
+              <div className="flex items-center justify-center mb-2">
+                <div className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-orange-300 font-bold text-xs">IMPORTANTE</span>
+              </div>
+              <p className="text-white/90 text-xs leading-relaxed">
+                A análise pode demorar entre <span className="font-bold text-orange-300">3-5 minutos</span>.<br/>
+                <span className="font-bold">Não feche esta página</span> para não interromper o processo.
+              </p>
+            </div>
           </div>
 
           {/* Progress Bar */}

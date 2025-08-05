@@ -2,19 +2,32 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Users, Zap } from 'lucide-react';
+import { Eye, Users, Zap, Lock } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const [username, setUsername] = useState('');
   const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (username.trim()) {
       // Remove @ if user typed it
       const cleanUsername = username.replace('@', '');
-      navigate(`/analyzing/${cleanUsername}`);
+      
+      // Mostrar aviso sobre perfil público
+      toast({
+        title: "⚠️ Perfil deve estar público",
+        description: "Para a análise funcionar corretamente, certifique-se de que seu perfil do Instagram está público durante o processo.",
+        duration: 8000,
+      });
+      
+      // Navegar após um pequeno delay para o usuário ver o aviso
+      setTimeout(() => {
+        navigate(`/analyzing/${cleanUsername}`);
+      }, 1000);
     }
   };
 

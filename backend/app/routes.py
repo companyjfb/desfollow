@@ -206,6 +206,12 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
         
         print(f"📊 Profile info obtido: {profile_info}")
         
+        # Verificar se o perfil é privado
+        if profile_info and profile_info.get('is_private', False):
+            print(f"🔒 Perfil @{username} é privado - não é possível fazer análise")
+            save_scan_result(db, job_id, username, "error", profile_info, error_message="Perfil privado - não é possível analisar contas privadas")
+            return
+        
         if profile_info and profile_info.get('followers_count', 0) > 0:
             # Salvar/atualizar usuário no banco
             user = get_or_create_user(db, username, profile_info)

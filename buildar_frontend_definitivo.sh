@@ -90,31 +90,53 @@ echo ""
 echo "📋 9. Movendo arquivos buildados..."
 cp -r dist/* /var/www/html/desfollow/
 if [ $? -ne 0 ]; then
-    echo "❌ Erro ao mover arquivos"
+    echo "❌ Erro ao mover arquivos para desfollow"
     exit 1
 fi
-echo "✅ Arquivos movidos"
+echo "✅ Arquivos movidos para /var/www/html/desfollow/"
+
+# 9.1. Copiar também para www
+echo ""
+echo "📋 9.1. Copiando para www..."
+mkdir -p /var/www/html/www
+cp -r dist/* /var/www/html/www/
+if [ $? -ne 0 ]; then
+    echo "❌ Erro ao copiar arquivos para www"
+    exit 1
+fi
+echo "✅ Arquivos copiados para /var/www/html/www/"
 
 # 10. Definir permissões
 echo ""
 echo "📋 10. Definindo permissões..."
 chown -R www-data:www-data /var/www/html/desfollow
 chmod -R 755 /var/www/html/desfollow
-echo "✅ Permissões definidas"
+chown -R www-data:www-data /var/www/html/www
+chmod -R 755 /var/www/html/www
+echo "✅ Permissões definidas para ambos diretórios"
 
 # 11. Verificar estrutura
 echo ""
 echo "📋 11. Verificando estrutura do frontend..."
 if [ -f "/var/www/html/desfollow/index.html" ]; then
-    echo "✅ index.html encontrado"
+    echo "✅ index.html encontrado em desfollow"
 else
-    echo "❌ index.html não encontrado!"
+    echo "❌ index.html não encontrado em desfollow!"
+    exit 1
+fi
+
+if [ -f "/var/www/html/www/index.html" ]; then
+    echo "✅ index.html encontrado em www"
+else
+    echo "❌ index.html não encontrado em www!"
     exit 1
 fi
 
 # Listar principais arquivos
-echo "📋 Arquivos principais:"
+echo "📋 Arquivos principais (desfollow):"
 ls -la /var/www/html/desfollow/ | head -10
+echo "📋 Arquivos principais (www):"
+ls -la /var/www/html/www/ | head -10
 
 # 12. Testar se Nginx consegue servir
 echo ""
@@ -138,6 +160,7 @@ echo "   • Produção: https://desfollow.com.br"
 echo ""
 echo "📁 LOCALIZAÇÃO:"
 echo "   /var/www/html/desfollow/"
+echo "   /var/www/html/www/"
 echo ""
 echo "📋 VERIFICAÇÕES:"
 echo "   1. Teste: curl -H 'Host: www.desfollow.com.br' http://localhost"
