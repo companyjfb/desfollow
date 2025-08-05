@@ -209,10 +209,30 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
         # Verificar se o perfil é privado
         if profile_info and profile_info.get('is_private', False):
             print(f"🔒 Perfil @{username} é privado - não é possível fazer análise")
+            # Atualizar cache com erro de perfil privado
+            set_job(job_id, {
+                "status": "error",
+                "error": "Perfil privado - não é possível analisar contas privadas",
+                "profile_info": profile_info
+            })
             save_scan_result(db, job_id, username, "error", profile_info, error_message="Perfil privado - não é possível analisar contas privadas")
             return
         
         if profile_info and profile_info.get('followers_count', 0) > 0:
+            # Atualizar cache do job com dados do perfil
+            set_job(job_id, {
+                "status": "running",
+                "profile_info": profile_info,
+                "count": 0,
+                "real_ghosts_count": 0,
+                "famous_ghosts_count": 0,
+                "followers_count": 0,
+                "following_count": 0,
+                "profile_followers_count": profile_info.get('followers_count', 0),
+                "profile_following_count": profile_info.get('following_count', 0)
+            })
+            print(f"✅ Cache do job atualizado com dados do perfil!")
+            
             # Salvar/atualizar usuário no banco
             user = get_or_create_user(db, username, profile_info)
             print(f"✅ Usuário criado/atualizado no banco: {user.id}")
@@ -229,6 +249,23 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             ghosts_result = await get_ghosts_with_profile(username, profile_info, user_id, db_session=db)
             print(f"📊 Ghosts result: {ghosts_result}")
             
+            # Atualizar cache do job com resultado final
+            set_job(job_id, {
+                "status": "done",
+                "profile_info": profile_info,
+                "count": ghosts_result.get('ghosts_count', 0),
+                "all": ghosts_result.get('ghosts', []),
+                "real_ghosts": ghosts_result.get('real_ghosts', []),
+                "famous_ghosts": ghosts_result.get('famous_ghosts', []),
+                "real_ghosts_count": ghosts_result.get('real_ghosts_count', 0),
+                "famous_ghosts_count": ghosts_result.get('famous_ghosts_count', 0),
+                "followers_count": ghosts_result.get('followers_count', 0),
+                "following_count": ghosts_result.get('following_count', 0),
+                "profile_followers_count": profile_info.get('followers_count', 0),
+                "profile_following_count": profile_info.get('following_count', 0)
+            })
+            print(f"✅ Cache do job atualizado com resultado final!")
+            
             # Salvar resultado final no banco
             save_scan_result(db, job_id, username, "done", profile_info, ghosts_result)
             
@@ -242,6 +279,11 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
             
         else:
             print(f"❌ Profile info é None ou zerado, salvando erro no banco")
+            # Atualizar cache com erro
+            set_job(job_id, {
+                "status": "error",
+                "error": "Não foi possível obter dados válidos do perfil"
+            })
             # Salvar erro no banco
             save_scan_result(db, job_id, username, "error", error_message="Não foi possível obter dados válidos do perfil")
             print(f"❌ Erro: Não foi possível obter dados válidos do perfil")
@@ -249,6 +291,11 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
     except Exception as e:
         print(f"❌ Erro no scan: {e}")
         traceback.print_exc()
+        # Atualizar cache com erro
+        set_job(job_id, {
+            "status": "error",
+            "error": str(e)
+        })
         save_scan_result(db, job_id, username, "error", error_message=str(e))
 
 @router.get("/scan/{job_id}", response_model=StatusResponse)
