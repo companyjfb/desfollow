@@ -30,6 +30,7 @@ const Analyzing = () => {
   const [simulatedFollowers, setSimulatedFollowers] = useState(0);
   const [realFollowersCount, setRealFollowersCount] = useState(0); // Começa com 0, será atualizado com valor real
   const [realParasitesCount, setRealParasitesCount] = useState(0);
+  const [analysisProgress, setAnalysisProgress] = useState(0); // Progresso específico da análise atual
 
   const steps = [
     {
@@ -93,9 +94,9 @@ const Analyzing = () => {
         const jobId = await startScan(username);
         console.log('Job iniciado:', jobId);
         
-        // Progresso baseado no tempo - chega a 90% em 8 minutos
+        // Progresso baseado no tempo - chega a 90% em 4 minutos
         const startTime = Date.now();
-        const duration = 480000; // 8 minutos (480 segundos) para chegar a 90%
+        const duration = 240000; // 4 minutos (240 segundos) para chegar a 90%
         const targetProgress = 90;
         
         const progressInterval = setInterval(() => {
@@ -156,7 +157,7 @@ const Analyzing = () => {
               console.log('💾 Salvando dados do scan no cache...');
               saveScanToCache(username, status);
               
-              // Aguarda um pouco para mostrar 100%
+              // Aguarda pelo menos 5 segundos em "Finalizando análise"
               setTimeout(() => {
                 navigate(`/results/${username}`, { 
                   state: { 
@@ -164,7 +165,7 @@ const Analyzing = () => {
                     username: username 
                   } 
                 });
-              }, 1500);
+              }, 5000); // Mínimo 5 segundos na etapa final
               
             } else if (status.status === 'error') {
               setError(status.error || 'Erro desconhecido');
@@ -247,23 +248,41 @@ const Analyzing = () => {
     console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
     
     const startTime = Date.now();
-    const duration = 180000; // 🚀 ACELERADO: 3 minutos para completar
-    const delayBeforeParasites = 120000; // 🚀 ACELERADO: 2 minutos de delay para parasitas
+    const duration = 210000; // 3 minutos e 30 segundos total (2 min analisando + 1.5 min processando)
+    const delayBeforeParasites = 120000; // 2 minutos de delay para parasitas (só na fase de processamento)
     
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
-      // Seguidores: começa a aumentar gradualmente até o valor real em 15 segundos
-      const followersProgress = Math.min(elapsed / duration, 1);
-      const currentFollowers = Math.floor(followersProgress * realFollowersCount);
+      // Contagem de seguidores baseada nas fases:
+      // 0-10s: Conectando (0 seguidores)
+      // 10s-130s: Analisando seguidores (crescimento gradual)
+      // 130s+: Processando dados (completar contagem)
+      
+      let currentFollowers = 0;
+      
+      if (elapsed < 10000) {
+        // Fase 1: Conectando - sem contagem
+        currentFollowers = 0;
+      } else if (elapsed < 130000) {
+        // Fase 2: Analisando seguidores - crescimento gradual
+        const analyzeElapsed = elapsed - 10000; // Tempo desde início da análise
+        const analyzeDuration = 120000; // 2 minutos de análise
+        const analyzeProgress = Math.min(analyzeElapsed / analyzeDuration, 1);
+        currentFollowers = Math.floor(analyzeProgress * realFollowersCount);
+      } else {
+        // Fase 3+: Processando/Finalizando - contagem completa
+        currentFollowers = realFollowersCount;
+      }
+      
       setSimulatedFollowers(currentFollowers);
       
-      // Parasitas: só começam após 8 segundos, simulando até 22
-      if (elapsed < delayBeforeParasites) {
+      // Parasitas: só começam na fase de processamento (após 2min10s)
+      if (elapsed < 130000) {
         setSimulatedParasites(0);
       } else {
-        const parasitesElapsed = elapsed - delayBeforeParasites;
-        const parasitesDuration = duration - delayBeforeParasites;
+        const parasitesElapsed = elapsed - 130000;
+        const parasitesDuration = 90000; // 1.5 minutos para processar
         const parasitesProgress = Math.min(parasitesElapsed / parasitesDuration, 1);
         
         // 🎯 SIMULAÇÃO: Simula até 126 parasitas (valor real será usado no final)
@@ -275,14 +294,14 @@ const Analyzing = () => {
       console.log('📈 Contagem:', { 
         elapsed: Math.floor(elapsed/1000) + 's', 
         followers: currentFollowers, 
-        parasites: elapsed < delayBeforeParasites ? 0 : Math.floor((elapsed - delayBeforeParasites) / (duration - delayBeforeParasites) * 126)
+        parasites: elapsed < 130000 ? 0 : Math.floor((elapsed - 130000) / 90000 * 126)
       });
       
       if (elapsed >= duration) {
         clearInterval(numbersInterval);
         console.log('✅ Contagem simulada finalizada');
       }
-    }, 50); // 🚀 ACELERADO: Atualiza a cada 50ms para movimento mais rápido (era 100ms)
+    }, 100); // Atualiza a cada 100ms
 
     return () => clearInterval(numbersInterval);
   }, [realFollowersCount]); // REMOVIDO scanStatus?.status para evitar reinicialização
@@ -305,9 +324,9 @@ const Analyzing = () => {
   // Fallback para progresso simulado se não houver status real
   useEffect(() => {
     if (!scanStatus) {
-      // Progresso baseado no tempo - chega a 90% em 8 minutos
+      // Progresso baseado no tempo - chega a 90% em 4 minutos
       const startTime = Date.now();
-      const duration = 480000; // 8 minutos (480 segundos) para chegar a 90%
+      const duration = 240000; // 4 minutos (240 segundos) para chegar a 90%
       const targetProgress = 90;
       
       const interval = setInterval(() => {
@@ -332,36 +351,47 @@ const Analyzing = () => {
     }
   }, [scanStatus]); // Remove realFollowersCount da dependência
 
-  // Fallback para steps simulado se não houver status real
+  // Sistema de etapas com tempos específicos
   useEffect(() => {
-    if (!scanStatus) {
-      // Steps baseados no tempo - 1 minuto total
-      const startTime = Date.now();
-      const duration = 60000; // 60 segundos
+    const startTime = Date.now();
+    
+    const stepInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
       
-      const stepInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const progressPercent = (elapsed / duration) * 100;
-        
-        // Steps mais graduais
-        if (progressPercent < 25) {
-          setCurrentStep(0); // Conectando ao Instagram
-        } else if (progressPercent < 50) {
-          setCurrentStep(1); // Analisando seguidores
-        } else if (progressPercent < 80) {
-          setCurrentStep(2); // IA processando dados
-        } else {
-          setCurrentStep(3); // Finalizando
-        }
-        
-        if (progressPercent >= 100) {
-          clearInterval(stepInterval);
-        }
-      }, 1000); // Verifica a cada segundo
+      // Tempos específicos para cada etapa:
+      // 0-10s: Conectando ao Instagram
+      // 10s-2m10s: Analisando seguidores (2 minutos)
+      // 2m10s-3m40s: Processando dados (1 minuto e 30 segundos)
+      // 3m40s+: Finalizando análise (até scan terminar, mínimo 5s)
+      
+      if (elapsed < 10000) {
+        setCurrentStep(0); // Conectando ao Instagram
+        const stepProgress = Math.min((elapsed / 10000) * 100, 100);
+        setAnalysisProgress(Math.floor(stepProgress));
+      } else if (elapsed < 130000) { // 10s + 2min = 130s
+        setCurrentStep(1); // Analisando seguidores
+        const stepElapsed = elapsed - 10000;
+        const stepProgress = Math.min((stepElapsed / 120000) * 100, 100);
+        setAnalysisProgress(Math.floor(stepProgress));
+      } else if (elapsed < 220000) { // 130s + 1.5min = 220s
+        setCurrentStep(2); // Processando dados
+        const stepElapsed = elapsed - 130000;
+        const stepProgress = Math.min((stepElapsed / 90000) * 100, 100);
+        setAnalysisProgress(Math.floor(stepProgress));
+      } else {
+        setCurrentStep(3); // Finalizando análise
+        setAnalysisProgress(100);
+      }
+      
+      // Se o scan terminou, força para etapa final
+      if (scanStatus?.status === 'done') {
+        setCurrentStep(3);
+        clearInterval(stepInterval);
+      }
+    }, 1000); // Verifica a cada segundo
 
-      return () => clearInterval(stepInterval);
-    }
-  }, [scanStatus]);
+    return () => clearInterval(stepInterval);
+  }, [scanStatus?.status]);
 
 
 
@@ -454,12 +484,30 @@ const Analyzing = () => {
 
           {/* Stats */}
           <div className="mt-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">
-                {simulatedFollowers}
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  {simulatedFollowers.toLocaleString()}
+                </div>
+                <div className="text-white/70 text-xs">Seguidores analisados</div>
               </div>
-              <div className="text-white/70 text-sm">Seguidores analisados</div>
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  {analysisProgress}%
+                </div>
+                <div className="text-white/70 text-xs">Processo atual</div>
+              </div>
             </div>
+            
+            {/* Mostrar parasitas apenas se houver */}
+            {simulatedParasites > 0 && (
+              <div className="mt-4 text-center">
+                <div className="text-xl font-bold text-orange-400">
+                  {simulatedParasites}
+                </div>
+                <div className="text-white/70 text-xs">Parasitas detectados</div>
+              </div>
+            )}
           </div>
 
           {/* Loading Animation */}
