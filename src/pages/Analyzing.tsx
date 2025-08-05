@@ -126,10 +126,11 @@ const Analyzing = () => {
             const status = await pollScan(jobId.job_id);
             setScanStatus(status);
             
-            // Log menos verboso
-            if (attempts % 3 === 0) { // Log a cada 3 tentativas
-              console.log(`🔄 [${attempts}] Status: ${status.status}, Profile: ${status.profile_info?.followers_count || 0} seguidores`);
-            }
+            // Log mais detalhado para debug
+            console.log(`🔄 [${attempts}] Status: ${status.status}, Profile: ${status.profile_info?.followers_count || 0} seguidores, Count: ${status.count || 0}`);
+            console.log(`🔍 [${attempts}] Profile Info:`, status.profile_info);
+            console.log(`🔍 [${attempts}] Followers Count no status:`, status.followers_count);
+            console.log(`🔍 [${attempts}] Following Count no status:`, status.following_count);
             
             if (status.status === 'running') {
               // Capturar dados do perfil assim que chegarem
@@ -219,25 +220,25 @@ const Analyzing = () => {
   // Captura dados do perfil assim que chegarem - PRIORIDADE MÁXIMA
   useEffect(() => {
     console.log('🔍 Verificando dados do perfil:', scanStatus?.profile_info);
+    console.log('🔍 Status atual:', scanStatus?.status);
+    console.log('🔍 realFollowersCount atual:', realFollowersCount);
     
     if (scanStatus?.profile_info?.followers_count) {
       const realFollowers = scanStatus.profile_info.followers_count;
       console.log('🚨 PRIORIDADE MÁXIMA: Dados do perfil recebidos!');
       console.log('📊 Seguidores obtidos:', realFollowers);
       console.log('🎯 Status atual:', scanStatus.status);
-              console.log('⏱️ Tempo desde início:', Date.now() - (window as any).scanStartTime || 0, 'ms');
+      console.log('⏱️ Tempo desde início:', Date.now() - (window as any).scanStartTime || 0, 'ms');
       
-      setRealFollowersCount(realFollowers);
-      
-      // INICIA CONTAGEM IMEDIATAMENTE se ainda não foi iniciada
-      if (simulatedFollowers === 0) {
-        console.log('🚀 INICIANDO CONTAGEM DE SEGUIDORES IMEDIATAMENTE!');
-        setSimulatedFollowers(realFollowers);
+      // Sempre atualizar realFollowersCount quando os dados chegarem
+      if (realFollowersCount !== realFollowers) {
+        console.log('🔄 Atualizando realFollowersCount de', realFollowersCount, 'para', realFollowers);
+        setRealFollowersCount(realFollowers);
       }
     }
     
     // NOTA: Parasitas são capturados em um useEffect separado para evitar conflitos
-  }, [scanStatus?.profile_info?.followers_count]);
+  }, [scanStatus?.profile_info?.followers_count, scanStatus?.status, realFollowersCount]);
 
   // Debug: log sempre que scanStatus mudar
   useEffect(() => {
@@ -253,12 +254,13 @@ const Analyzing = () => {
   useEffect(() => {
     // Só inicia a contagem se temos o valor real de seguidores
     if (realFollowersCount <= 0) {
-      console.log('⏳ Aguardando dados do perfil...');
+      console.log('⏳ Aguardando dados do perfil... realFollowersCount:', realFollowersCount);
       return;
     }
     
     console.log('🚀 INICIANDO CONTAGEM SIMULADA com', realFollowersCount, 'seguidores');
     console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
+    console.log('🎯 Status atual do scan:', scanStatus?.status);
     
     const startTime = Date.now();
     const duration = 210000; // 3 minutos e 30 segundos total (2 min analisando + 1.5 min processando)
@@ -288,12 +290,16 @@ const Analyzing = () => {
         setSimulatedParasites(currentParasites);
       }
       
-      console.log('📈 Contagem:', { 
-        elapsed: Math.floor(elapsed/1000) + 's', 
-        followers: currentFollowers, 
-        parasites: elapsed < 130000 ? 0 : Math.floor((elapsed - 130000) / 90000 * 126),
-        progress: `${Math.floor(countingProgress * 100)}%`
-      });
+      // Log menos frequente para não sobrecarregar
+      if (Math.floor(elapsed / 1000) % 5 === 0) { // A cada 5 segundos
+        console.log('📈 Contagem (a cada 5s):', { 
+          elapsed: Math.floor(elapsed/1000) + 's', 
+          followers: currentFollowers, 
+          parasites: elapsed < 130000 ? 0 : Math.floor((elapsed - 130000) / 90000 * 126),
+          progress: `${Math.floor(countingProgress * 100)}%`,
+          realFollowersCount
+        });
+      }
       
       if (elapsed >= countingDuration) {
         clearInterval(numbersInterval);
