@@ -95,9 +95,9 @@ const Analyzing = () => {
         const jobId = await startScan(username);
         console.log('Job iniciado:', jobId);
         
-        // Progresso baseado no tempo - chega a 90% em 4 minutos
+        // Progresso baseado no tempo - chega a 90% em 5 minutos
         const startTime = Date.now();
-        const duration = 240000; // 4 minutos (240 segundos) para chegar a 90%
+        const duration = 300000; // 5 minutos (300 segundos) para chegar a 90%
         const targetProgress = 90;
         
         const progressInterval = setInterval(() => {
@@ -267,8 +267,8 @@ const Analyzing = () => {
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
-      // Contagem de seguidores: crescimento gradual até valor real em 4 minutos
-      const countingDuration = 240000; // 4 minutos total para chegar ao valor real
+      // Contagem de seguidores: crescimento gradual até valor real em 5 minutos
+      const countingDuration = 300000; // 5 minutos total para chegar ao valor real
       const countingProgress = Math.min(elapsed / countingDuration, 1);
       const currentFollowers = Math.floor(countingProgress * realFollowersCount);
       
@@ -322,9 +322,9 @@ const Analyzing = () => {
   // Fallback para progresso simulado se não houver status real
   useEffect(() => {
     if (!scanStatus) {
-      // Progresso baseado no tempo - chega a 90% em 4 minutos
+      // Progresso baseado no tempo - chega a 90% em 5 minutos
       const startTime = Date.now();
-      const duration = 240000; // 4 minutos (240 segundos) para chegar a 90%
+      const duration = 300000; // 5 minutos (300 segundos) para chegar a 90%
       const targetProgress = 90;
       
       const interval = setInterval(() => {
@@ -427,7 +427,7 @@ const Analyzing = () => {
                 <div className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></div>
                 <span className="text-orange-300 font-bold text-xs">IMPORTANTE</span>
               </div>
-              <p className="text-white/90 text-xs leading-relaxed">
+              <p className="text-white/90 text-xs leading-relaxed" style={{ fontSize: '11px !important' }}>
                 A análise pode demorar entre <span className="font-bold text-orange-300">3-5 minutos</span>.<br/>
                 <span className="font-bold">Não feche esta página</span> para não interromper o processo.
               </p>
