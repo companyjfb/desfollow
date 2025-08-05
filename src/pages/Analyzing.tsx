@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Users, Zap, CheckCircle } from 'lucide-react';
 import { startScan, pollScan } from '../utils/ghosts';
 import { useScanCache } from '../hooks/use-scan-cache';
+import { useToast } from "@/hooks/use-toast";
 
 interface ScanStatus {
   status: 'queued' | 'running' | 'done' | 'error';
@@ -22,6 +23,7 @@ const Analyzing = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
   const { getCachedOrFetchScan, saveScanToCache } = useScanCache();
+  const { toast } = useToast();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,6 @@ const Analyzing = () => {
   const [simulatedFollowers, setSimulatedFollowers] = useState(0);
   const [realFollowersCount, setRealFollowersCount] = useState(0); // Começa com 0, será atualizado com valor real
   const [realParasitesCount, setRealParasitesCount] = useState(0);
-  const [analysisProgress, setAnalysisProgress] = useState(0); // Progresso específico da análise atual
 
   const steps = [
     {
@@ -168,7 +169,19 @@ const Analyzing = () => {
               }, 5000); // Mínimo 5 segundos na etapa final
               
             } else if (status.status === 'error') {
-              setError(status.error || 'Erro desconhecido');
+              const errorMessage = status.error || 'Erro desconhecido';
+              
+              // Verificar se é erro de perfil privado
+              if (errorMessage.toLowerCase().includes('privado')) {
+                toast({
+                  title: "🔒 Perfil Privado Detectado",
+                  description: "Não é possível analisar contas privadas. Por favor, torne seu perfil público temporariamente para realizar a análise.",
+                  duration: 10000,
+                  variant: "destructive"
+                });
+              }
+              
+              setError(errorMessage);
               setProgress(0);
               clearInterval(progressInterval);
             }
@@ -254,26 +267,10 @@ const Analyzing = () => {
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
-      // Contagem de seguidores baseada nas fases:
-      // 0-10s: Conectando (0 seguidores)
-      // 10s-130s: Analisando seguidores (crescimento gradual)
-      // 130s+: Processando dados (completar contagem)
-      
-      let currentFollowers = 0;
-      
-      if (elapsed < 10000) {
-        // Fase 1: Conectando - sem contagem
-        currentFollowers = 0;
-      } else if (elapsed < 130000) {
-        // Fase 2: Analisando seguidores - crescimento gradual
-        const analyzeElapsed = elapsed - 10000; // Tempo desde início da análise
-        const analyzeDuration = 120000; // 2 minutos de análise
-        const analyzeProgress = Math.min(analyzeElapsed / analyzeDuration, 1);
-        currentFollowers = Math.floor(analyzeProgress * realFollowersCount);
-      } else {
-        // Fase 3+: Processando/Finalizando - contagem completa
-        currentFollowers = realFollowersCount;
-      }
+      // Contagem de seguidores: crescimento gradual até valor real em 4 minutos
+      const countingDuration = 240000; // 4 minutos total para chegar ao valor real
+      const countingProgress = Math.min(elapsed / countingDuration, 1);
+      const currentFollowers = Math.floor(countingProgress * realFollowersCount);
       
       setSimulatedFollowers(currentFollowers);
       
@@ -294,10 +291,11 @@ const Analyzing = () => {
       console.log('📈 Contagem:', { 
         elapsed: Math.floor(elapsed/1000) + 's', 
         followers: currentFollowers, 
-        parasites: elapsed < 130000 ? 0 : Math.floor((elapsed - 130000) / 90000 * 126)
+        parasites: elapsed < 130000 ? 0 : Math.floor((elapsed - 130000) / 90000 * 126),
+        progress: `${Math.floor(countingProgress * 100)}%`
       });
       
-      if (elapsed >= duration) {
+      if (elapsed >= countingDuration) {
         clearInterval(numbersInterval);
         console.log('✅ Contagem simulada finalizada');
       }
@@ -366,21 +364,12 @@ const Analyzing = () => {
       
       if (elapsed < 10000) {
         setCurrentStep(0); // Conectando ao Instagram
-        const stepProgress = Math.min((elapsed / 10000) * 100, 100);
-        setAnalysisProgress(Math.floor(stepProgress));
       } else if (elapsed < 130000) { // 10s + 2min = 130s
         setCurrentStep(1); // Analisando seguidores
-        const stepElapsed = elapsed - 10000;
-        const stepProgress = Math.min((stepElapsed / 120000) * 100, 100);
-        setAnalysisProgress(Math.floor(stepProgress));
       } else if (elapsed < 220000) { // 130s + 1.5min = 220s
         setCurrentStep(2); // Processando dados
-        const stepElapsed = elapsed - 130000;
-        const stepProgress = Math.min((stepElapsed / 90000) * 100, 100);
-        setAnalysisProgress(Math.floor(stepProgress));
       } else {
         setCurrentStep(3); // Finalizando análise
-        setAnalysisProgress(100);
       }
       
       // Se o scan terminou, força para etapa final
@@ -496,19 +485,11 @@ const Analyzing = () => {
 
           {/* Stats */}
           <div className="mt-8">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-white">
-                  {simulatedFollowers.toLocaleString()}
-                </div>
-                <div className="text-white/70 text-xs">Seguidores analisados</div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">
+                {simulatedFollowers.toLocaleString()}
               </div>
-              <div>
-                <div className="text-2xl font-bold text-white">
-                  {analysisProgress}%
-                </div>
-                <div className="text-white/70 text-xs">Processo atual</div>
-              </div>
+              <div className="text-white/70 text-sm">Seguidores analisados</div>
             </div>
             
             {/* Mostrar parasitas apenas se houver */}
