@@ -230,15 +230,13 @@ const Analyzing = () => {
       console.log('🎯 Status atual:', scanStatus.status);
       console.log('⏱️ Tempo desde início:', Date.now() - (window as any).scanStartTime || 0, 'ms');
       
-      // Sempre atualizar realFollowersCount quando os dados chegarem
-      if (realFollowersCount !== realFollowers) {
-        console.log('🔄 Atualizando realFollowersCount de', realFollowersCount, 'para', realFollowers);
-        setRealFollowersCount(realFollowers);
-      }
+      // FORÇA atualização sempre que dados chegarem
+      console.log('🔄 FORÇANDO atualização de realFollowersCount para:', realFollowers);
+      setRealFollowersCount(realFollowers);
     }
     
     // NOTA: Parasitas são capturados em um useEffect separado para evitar conflitos
-  }, [scanStatus?.profile_info?.followers_count, scanStatus?.status, realFollowersCount]);
+  }, [scanStatus?.profile_info?.followers_count, scanStatus?.status]);
 
   // Debug: log sempre que scanStatus mudar
   useEffect(() => {
@@ -252,6 +250,8 @@ const Analyzing = () => {
 
   // Controla os números simulados - PRIORIDADE MÁXIMA
   useEffect(() => {
+    console.log('🔄 useEffect da contagem EXECUTADO! realFollowersCount:', realFollowersCount);
+    
     // Só inicia a contagem se temos o valor real de seguidores
     if (realFollowersCount <= 0) {
       console.log('⏳ Aguardando dados do perfil... realFollowersCount:', realFollowersCount);
@@ -261,10 +261,15 @@ const Analyzing = () => {
     console.log('🚀 INICIANDO CONTAGEM SIMULADA com', realFollowersCount, 'seguidores');
     console.log('⏱️ Tempo desde início:', Date.now() - ((window as any).scanStartTime || 0), 'ms');
     console.log('🎯 Status atual do scan:', scanStatus?.status);
+    console.log('🎯 Scan data completo:', scanStatus);
     
     const startTime = Date.now();
     const duration = 210000; // 3 minutos e 30 segundos total (2 min analisando + 1.5 min processando)
     const delayBeforeParasites = 120000; // 2 minutos de delay para parasitas (só na fase de processamento)
+    
+    // INICIAR CONTAGEM IMEDIATAMENTE
+    console.log('🎯 INICIANDO contagem IMEDIATAMENTE!');
+    setSimulatedFollowers(1); // Começar com 1 para mostrar que iniciou
     
     const numbersInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -272,7 +277,7 @@ const Analyzing = () => {
       // Contagem de seguidores: crescimento gradual até valor real em 5 minutos
       const countingDuration = 300000; // 5 minutos total para chegar ao valor real
       const countingProgress = Math.min(elapsed / countingDuration, 1);
-      const currentFollowers = Math.floor(countingProgress * realFollowersCount);
+      const currentFollowers = Math.max(1, Math.floor(countingProgress * realFollowersCount)); // Mínimo 1
       
       setSimulatedFollowers(currentFollowers);
       
