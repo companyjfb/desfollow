@@ -838,41 +838,21 @@ async def check_subscription_status(username: str, db: Session = Depends(get_db)
                 "verification_method": "local_only"
             })
         
-        # 2. Verificação local básica
+        # Verificação baseada apenas em dados locais
         is_active_local = subscription.is_active()
         is_payment_current = subscription.is_payment_current()
         days_remaining = subscription.days_until_expiry()
         
-        # 3. VERIFICAÇÃO DUPLA com Perfect Pay (apenas se habilitada)
-        is_active_perfect_pay = True
-        verification_method = "local_only"
+        # Decisão final baseada apenas em dados locais (mais confiável)
+        # Se o pagamento foi aprovado localmente via webhook, considerar ativo
+        final_status = is_active_local and is_payment_current
         
-        if verify_with_api and subscription:
-            print(f"🔍 Verificação dupla: consultando Perfect Pay para {username}")
-            is_active_perfect_pay = await verify_subscription_with_perfect_pay(username, subscription)
-            verification_method = "local_and_api"
-            
-            # COMENTADO: não deixar Perfect Pay cancelar assinatura se pagamento local foi aprovado
-            # if not is_active_perfect_pay and subscription.subscription_status == "active":
-            #     subscription.subscription_status = "cancelled"
-            #     db.commit()
-            #     print(f"🔄 Status local atualizado para cancelado baseado na Perfect Pay")
-            if not is_active_perfect_pay and subscription.subscription_status == "active":
-                print(f"⚠️ Perfect Pay retornou inativo, mas mantendo ativo localmente pois pagamento foi aprovado")
-        
-        # 4. Decisão final: PRIORIZAR status local se pagamento está current
-        # Se o pagamento foi aprovado localmente, não deixar a API externa cancelar
-        if is_payment_current and is_active_local:
-            final_status = True
-            print(f"🔒 FORÇANDO STATUS ATIVO - pagamento aprovado localmente")
-        else:
-            final_status = is_active_local and is_payment_current and is_active_perfect_pay
-        
-        print(f"📊 Verificação final para {username}:")
+        print(f"📊 Verificação LOCAL para {username}:")
+        print(f"   Status da assinatura: {subscription.subscription_status}")
         print(f"   Local ativo: {is_active_local}")
         print(f"   Pagamento atual: {is_payment_current}")
-        print(f"   Perfect Pay ativo: {is_active_perfect_pay}")
         print(f"   Status final: {final_status}")
+        print(f"   Dias restantes: {days_remaining}")
         
         return JSONResponse({
             "has_active_subscription": final_status,
@@ -880,7 +860,7 @@ async def check_subscription_status(username: str, db: Session = Depends(get_db)
             "subscription_status": subscription.subscription_status,
             "is_active_local": is_active_local,
             "is_payment_current": is_payment_current,
-            "is_active_perfect_pay": is_active_perfect_pay,
+            "is_active_perfect_pay": final_status,  # Mesmo valor que local para compatibilidade
             "days_remaining": days_remaining,
             "is_expiring_soon": subscription.is_expiring_soon(),
             "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
@@ -889,7 +869,8 @@ async def check_subscription_status(username: str, db: Session = Depends(get_db)
             "total_payments_received": subscription.total_payments_received,
             "monthly_amount": subscription.monthly_amount,
             "perfect_pay_code": subscription.perfect_pay_code,
-            "verification_method": verification_method
+            "perfect_pay_customer_email": subscription.perfect_pay_customer_email,
+            "verification_method": "local_only"
         })
         
     except Exception as e:
