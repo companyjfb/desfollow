@@ -161,7 +161,14 @@ const Analyzing = () => {
               
               // Aguarda pelo menos 5 segundos em "Finalizando análise"
               setTimeout(() => {
-                navigate(`/results/${username}`, { 
+                // Preservar parâmetros UTM na navegação para results
+                const urlParams = new URLSearchParams(location.search);
+                const queryString = urlParams.toString();
+                const targetUrl = queryString 
+                  ? `/results/${username}?${queryString}`
+                  : `/results/${username}`;
+                
+                navigate(targetUrl, { 
                   state: { 
                     scanData: status,
                     username: username 

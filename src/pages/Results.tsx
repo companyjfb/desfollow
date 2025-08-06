@@ -600,8 +600,45 @@ const Results = () => {
               <div className="space-y-6">
                 <Button
                   onClick={() => {
-                    // Redirecionar para Perfect Pay preservando o username nos UTMs
-                    const checkoutUrl = `https://checkout.perfectpay.com.br/pay/PPU38CPTT5E?utm_content=${encodeURIComponent(username || '')}&utm_source=desfollow&utm_campaign=subscription`;
+                    // Estratégia múltipla para preservar username E parâmetros UTM originais
+                    const baseUrl = 'https://checkout.perfectpay.com.br/pay/PPU38CPTT5E';
+                    const params = new URLSearchParams();
+                    
+                    // Preservar parâmetros UTM originais da URL atual
+                    const currentUrl = new URLSearchParams(location.search);
+                    const originalUtms = {
+                      utm_source: currentUrl.get('utm_source'),
+                      utm_medium: currentUrl.get('utm_medium'), 
+                      utm_campaign: currentUrl.get('utm_campaign'),
+                      utm_content: currentUrl.get('utm_content'),
+                      utm_term: currentUrl.get('utm_term'),
+                      src: currentUrl.get('src'),
+                    };
+                    
+                    // 1. PRIORIDADE: Parâmetro dedicado username
+                    params.set('username', username || '');
+                    
+                    // 2. UTM personalizado como backup
+                    params.set('utm_perfect', username || '');
+                    
+                    // 3. Preservar UTMs originais se existirem
+                    Object.entries(originalUtms).forEach(([key, value]) => {
+                      if (value) params.set(key, value);
+                    });
+                    
+                    // 4. UTMs padrão do Desfollow (não sobrescrever se já existir)
+                    if (!params.has('utm_source')) params.set('utm_source', 'desfollow');
+                    if (!params.has('utm_campaign')) params.set('utm_campaign', 'subscription');
+                    if (!params.has('utm_medium')) params.set('utm_medium', 'webapp');
+                    
+                    // 5. SRC como backup adicional (não sobrescrever se já existir)
+                    if (!params.has('src')) params.set('src', `user_${username || 'unknown'}`);
+                    
+                    // 6. Configurar redirecionamento pós-pagamento
+                    params.set('redirect_url', `https://desfollow.com.br/results/${username}?payment=success`);
+                    
+                    const checkoutUrl = `${baseUrl}?${params.toString()}`;
+                    console.log('🔗 URL do checkout com UTMs preservados:', checkoutUrl);
                     window.open(checkoutUrl, '_blank');
                   }}
                   className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"

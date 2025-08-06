@@ -569,26 +569,41 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
         print(f"💰 Valor: R$ {webhook_data.sale_amount}")
         print(f"👤 Cliente: {webhook_data.customer.get('email', 'N/A')}")
         
-        # Extrair username do metadata com múltiplas tentativas
+        # Extrair username do metadata com ESTRATÉGIA MÚLTIPLA
         username = None
         if webhook_data.metadata:
-            # Tentar várias formas de extrair o username
-            username = (
-                webhook_data.metadata.get('username') or
-                webhook_data.metadata.get('utm_content') or
-                webhook_data.metadata.get('src') or
-                webhook_data.metadata.get('utm_source') or
-                webhook_data.metadata.get('utm_campaign')
-            )
+            # 1. PRIORIDADE: Parâmetro dedicado 'username'
+            username = webhook_data.metadata.get('username')
+            
+            # 2. BACKUP: UTM personalizado 'utm_perfect'  
+            if not username:
+                username = webhook_data.metadata.get('utm_perfect')
+            
+            # 3. BACKUP: Extrair do campo 'src' (user_USERNAME)
+            if not username and webhook_data.metadata.get('src'):
+                src_value = webhook_data.metadata.get('src', '')
+                if src_value.startswith('user_'):
+                    username = src_value.replace('user_', '')
+            
+            # 4. FALLBACK: UTMs tradicionais (para compatibilidade)
+            if not username:
+                username = (
+                    webhook_data.metadata.get('utm_content') or
+                    webhook_data.metadata.get('utm_source') or
+                    webhook_data.metadata.get('utm_campaign')
+                )
         
-        # Se não encontrou nos metadados, tentar extrair da URL se presente
-        if not username and webhook_data.metadata.get('utm_content'):
-            # Tentar extrair de URLs como "username=valor"
+        # 5. ÚLTIMA TENTATIVA: Extrair de qualquer campo que contenha username
+        if not username and webhook_data.metadata:
             import re
-            content = webhook_data.metadata.get('utm_content', '')
-            match = re.search(r'username[=:]([^&\s]+)', content)
-            if match:
-                username = match.group(1)
+            for key, value in webhook_data.metadata.items():
+                if value and isinstance(value, str):
+                    # Buscar padrões como "username=valor" ou "user_valor"
+                    match = re.search(r'(?:username[=:]|user_)([^&\s]+)', value)
+                    if match:
+                        username = match.group(1)
+                        print(f"🔍 Username extraído de {key}: {username}")
+                        break
         
         if not username:
             print("⚠️ Username não encontrado nos metadados do webhook")
