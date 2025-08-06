@@ -217,6 +217,11 @@ const Results = () => {
   const blockedProfiles = allProfiles.slice(5, 15); // Máximo 10 bloqueados
   
   // Calcular paginação CORRIGIDA
+  // Reset página quando dados mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [scanData]);
+
   let visibleProfiles = [];
   let totalPages = 1;
   
@@ -499,64 +504,102 @@ const Results = () => {
                 
 
                 
-                {/* Paginação para usuários pagos */}
+                {/* Paginação funcional para usuários pagos quando há mais de 100 resultados */}
                 {hasFullAccess && totalPages > 1 && (
-                  <div className="flex items-center justify-center space-x-4 mb-8">
-                    <Button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      variant="ghost"
-                      className="text-white hover:bg-white/10 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="w-5 h-5 mr-2" />
-                      Anterior
-                    </Button>
-                    
-                    <div className="flex items-center space-x-2">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <Button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            variant={currentPage === pageNum ? "default" : "ghost"}
-                            className={`w-10 h-10 ${
-                              currentPage === pageNum 
-                                ? "bg-blue-600 text-white" 
-                                : "text-white hover:bg-white/10"
-                            }`}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                      {totalPages > 5 && (
-                        <>
-                          <span className="text-white/60">...</span>
-                          <Button
-                            onClick={() => setCurrentPage(totalPages)}
-                            variant={currentPage === totalPages ? "default" : "ghost"}
-                            className={`w-10 h-10 ${
-                              currentPage === totalPages 
-                                ? "bg-blue-600 text-white" 
-                                : "text-white hover:bg-white/10"
-                            }`}
-                          >
-                            {totalPages}
-                          </Button>
-                        </>
-                      )}
+                  <div className="flex flex-col items-center space-y-4 mb-8">
+                    {/* Informação sobre total e página atual */}
+                    <div className="text-white/70 text-sm">
+                      Mostrando {((currentPage - 1) * cardsPerPage) + 1} - {Math.min(currentPage * cardsPerPage, allProfiles.length)} de {allProfiles.length} perfis
                     </div>
                     
-                    <Button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      variant="ghost"
-                      className="text-white hover:bg-white/10 disabled:opacity-50"
-                    >
-                      Próxima
-                      <ChevronRight className="w-5 h-5 ml-2" />
-                    </Button>
+                    {/* Controles de paginação */}
+                    <div className="flex items-center justify-center space-x-2">
+                      <Button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/10 disabled:opacity-50"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Anterior
+                      </Button>
+                      
+                      <div className="flex items-center space-x-1">
+                        {/* Primeira página */}
+                        {currentPage > 3 && (
+                          <>
+                            <Button
+                              onClick={() => setCurrentPage(1)}
+                              variant="ghost"
+                              size="sm"
+                              className="w-8 h-8 text-white hover:bg-white/10"
+                            >
+                              1
+                            </Button>
+                            {currentPage > 4 && <span className="text-white/50 text-sm">...</span>}
+                          </>
+                        )}
+                        
+                        {/* Páginas ao redor da atual */}
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          if (pageNum < 1 || pageNum > totalPages) return null;
+                          
+                          return (
+                            <Button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              variant={currentPage === pageNum ? "default" : "ghost"}
+                              size="sm"
+                              className={`w-8 h-8 ${
+                                currentPage === pageNum 
+                                  ? "bg-blue-600 text-white hover:bg-blue-700" 
+                                  : "text-white hover:bg-white/10"
+                              }`}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                        
+                        {/* Última página */}
+                        {currentPage < totalPages - 2 && totalPages > 5 && (
+                          <>
+                            {currentPage < totalPages - 3 && <span className="text-white/50 text-sm">...</span>}
+                            <Button
+                              onClick={() => setCurrentPage(totalPages)}
+                              variant="ghost"
+                              size="sm"
+                              className="w-8 h-8 text-white hover:bg-white/10"
+                            >
+                              {totalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      
+                      <Button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Próxima
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 )}
                 
