@@ -1007,10 +1007,10 @@ def get_payment_type_name(type_enum: int) -> str:
     return types.get(type_enum, 'unknown')
 
 # =============================================================================
-# VERIFICAÇÃO DUPLA COM API PERFECT PAY
+# FUNÇÕES DA PERFECT PAY REMOVIDAS - Usando apenas dados locais do webhook
 # =============================================================================
-
-PERFECT_PAY_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIzIiwianRpIjoiZDYwMDY0YWIwYzhjOWY1NGZhMTY1OGQzMzJiOGZhOTNhNTg4MTY0MThmMmYxYmYyMjM2N2JiNTkxNWRmYjQ1NDhjZjAzOTg3ODg0YjgwN2UiLCJpYXQiOjE3NTQ1MDkyNTIuODcwOTMyLCJuYmYiOjE3NTQ1MDkyNTIuODcwOTM1LCJleHAiOjE5MTIyNzU2NTIuODU1ODI4LCJzdWIiOiIyNTYyNzU4Iiwic2NvcGVzIjpbInBlcnNvbmFsX2FjY2VzcyJdfQ.iXYukZAu7kKC_4xBkPO5F9ywh7En28L-e-Yqa6hWk_n3YPZ7nHVMsaKRH_MU5RdKMun2S97P4cZ7KiS0dW-TKWK07s5RE_sSmHsQrchb-P8c5svPfMF9qjta1boX0BJLfvfBMdZx8_-4Ba61mwGCdwbJXH8n3nKDBfWCUMkKEkgoAfa2H1qJ9HM7KUXXRj9WUyAk8GJ8fqkVZdACNsMCQHMw-igjbblEYznFgDo7PxVeYhtS1Pfg1cOTy3IrwSmpv--mPhrLYIKGYJ5kPT4kSnIKjst-qa5ZIuwTN-PD91VBIpFDTeTXymFbgHIF-tXYb60746TcjyH11OHK6lpaAOr0ejJiCSsQPX3_82IBghFSfvzH2PDP7UdNtEzUc0-_Qdrn3CYS_NeieduPsNZVSiIHna0-t7DCycNAT-VNxTsSQzBDEbZTVlKAkkY7-aSWPKA6fPHhzlFmxAvzRV0nOlrcBwAk7_74WeXiDnn3A9YJsSfBvz0BzmqRfwxmqWFVp0ayEAp9iJmaZLDBnGGOM0yclSSrdfSZCO9lg2O4-GdZZdKWFwmUtWhBpaYVAe6Z983NmuAS1A-ToC-bl2FW9mcYM9UPXQ3RTWeGY2ugFDMURU9QfSV5VuLhLusLrvX1xQwnjUbu5XMtfE2FPu4sWyTFKuJKB3CmBDI7yLENxLk"
+# As funções get_perfect_pay_sales e verify_subscription_with_perfect_pay foram removidas
+# pois agora confiamos 100% nos dados recebidos via webhook da PerfectPay
 
 async def get_perfect_pay_sales(username: str = None, transaction_token: str = None, customer_email: str = None, customer_cpf: str = None) -> Dict[str, Any]:
     """
