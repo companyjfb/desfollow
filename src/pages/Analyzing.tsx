@@ -432,23 +432,23 @@ const Analyzing = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-instagram-blue via-blue-600 to-purple-800 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-instagram-blue via-blue-600 to-purple-800 flex items-center justify-center p-3">
+      <div className="max-w-sm w-full">
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl">
           
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <img src="/lovable-uploads/b7dde072-9f5b-476f-80ea-ff351b4129bd.png" alt="Desfollow Logo" className="w-10 h-10 mr-3" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 bg-clip-text text-transparent">Desfollow</h1>
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center mb-3">
+              <img src="/lovable-uploads/b7dde072-9f5b-476f-80ea-ff351b4129bd.png" alt="Desfollow Logo" className="w-8 h-8 mr-2" />
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 bg-clip-text text-transparent">Desfollow</h1>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Analisando @{username}</h2>
-            <p className="text-white/80 text-sm mb-4">Aguarde enquanto nossa IA faz a varredura</p>
+            <h2 className="text-lg font-bold text-white mb-2">Analisando @{username}</h2>
+            <p className="text-white/80 text-xs mb-3">Aguarde enquanto nossa IA faz a varredura</p>
             
             {/* Aviso importante */}
-            <div className="bg-orange-500/20 border border-orange-500/40 rounded-xl p-4 mb-4 max-w-sm mx-auto">
-              <div className="flex items-center justify-center mb-2">
-                <div className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></div>
+            <div className="bg-orange-500/20 border border-orange-500/40 rounded-lg p-3 mb-3">
+              <div className="flex items-center justify-center mb-1">
+                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5 animate-pulse"></div>
                 <span className="text-orange-300 font-bold text-xs">IMPORTANTE</span>
               </div>
               <p className="text-white/90 text-xs leading-relaxed" style={{ fontSize: '11px !important' }}>
@@ -459,7 +459,7 @@ const Analyzing = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className="mb-8">
+          <div className="mb-6">
             <div className="bg-white/20 rounded-full h-3 mb-2">
               <div 
                 className="bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 h-3 rounded-full transition-all duration-300 ease-out"

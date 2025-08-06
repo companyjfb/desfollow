@@ -658,18 +658,18 @@ const Results = () => {
                   Desbloquear por R$ 29,90
                 </Button>
                 
-                <div className="flex items-center justify-center space-x-8 text-white/80 text-base">
-                  <div className="flex items-center">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Pagamento seguro
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-white/80 text-sm">
+                  <div className="flex items-center justify-center sm:justify-start">
+                    <Shield className="w-4 h-4 mr-2 text-green-400" />
+                    <span className="font-medium">Pagamento seguro</span>
                   </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    Garantia 30 dias
+                  <div className="flex items-center justify-center sm:justify-center">
+                    <CheckCircle className="w-4 h-4 mr-2 text-blue-400" />
+                    <span className="font-medium">Garantia 30 dias</span>
                   </div>
-                  <div className="flex items-center">
-                    <Star className="w-5 h-5 mr-2" />
-                    4.9/5 avaliação
+                  <div className="flex items-center justify-center sm:justify-end">
+                    <Star className="w-4 h-4 mr-2 text-yellow-400" />
+                    <span className="font-medium">4.9/5 avaliação</span>
                   </div>
                 </div>
               </div>
