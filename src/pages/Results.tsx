@@ -214,14 +214,29 @@ const Results = () => {
     totalPages = 1;
   }
 
-  // 🔍 DEBUG: Verificar dados processados
+  // 🔍 DEBUG: Verificar dados processados e ORDENAÇÃO
+  console.log('🔍 DEBUG - Real Ghosts (raw):', scanData?.real_ghosts?.length || 0);
+  console.log('🔍 DEBUG - Famous Ghosts (raw):', scanData?.famous_ghosts?.length || 0);
   console.log('🔍 DEBUG - All Ghosts Length:', allGhosts.length);
   console.log('🔍 DEBUG - All Profiles Length:', allProfiles.length);
   console.log('🔍 DEBUG - Visible Profiles Length:', visibleProfiles.length);
   console.log('🔍 DEBUG - Total Pages:', totalPages);
   console.log('🔍 DEBUG - Current Page:', currentPage);
   console.log('🔍 DEBUG - Has Full Access:', hasFullAccess);
-  console.log('🔍 DEBUG - All Ghosts Sample:', allGhosts.slice(0, 3));
+  
+  // 🎯 DEBUG: Verificar ORDEM dos primeiros cards
+  console.log('🎯 ORDEM DOS PRIMEIROS 10 CARDS:');
+  allProfiles.slice(0, 10).forEach((profile, index) => {
+    console.log(`   ${index + 1}. @${profile.name} - Tipo: ${profile.type} - Verificado: ${profile.isVerified}`);
+  });
+  
+  // 🎯 DEBUG: Verificar se usuários não pagos veem pessoas REAIS primeiro
+  if (!hasFullAccess) {
+    console.log('👤 USUÁRIO NÃO PAGO - Primeiros 5 cards:');
+    visibleProfiles.forEach((profile, index) => {
+      console.log(`   ${index + 1}. @${profile.name} - Tipo: ${profile.type} - Verificado: ${profile.isVerified}`);
+    });
+  }
 
   // Perfis bloqueados (simulados) - apenas para usuários normais
   const blurredProfiles = Array.from({ length: 8 }, (_, i) => ({
@@ -382,7 +397,16 @@ const Results = () => {
                         </div>
                         <div className="flex-1">
                           <div className="mb-2">
-                            <h4 className="font-bold text-white text-lg">@{profile.name}</h4>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h4 className="font-bold text-white text-lg">@{profile.name}</h4>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                profile.type === 'verified' 
+                                  ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40' 
+                                  : 'bg-green-600/30 text-green-300 border border-green-500/40'
+                              }`}>
+                                {profile.type === 'verified' ? '⭐ FAMOSO' : '👤 REAL'}
+                              </span>
+                            </div>
                             <p className="text-gray-300 text-sm mb-2">{profile.fullName}</p>
                             <div className={`rounded-full px-3 py-1 inline-block ${
                               profile.type === 'verified' 
