@@ -6,8 +6,8 @@ echo "🖼️ Copiando todas as imagens e favicon para o servidor..."
 sudo mkdir -p /var/www/desfollow/lovable-uploads
 sudo mkdir -p /var/www/desfollow/assets
 
-# Copiar todas as imagens do lovable-uploads (da Hostinger)
-echo "📥 Baixando todas as imagens do lovable-uploads..."
+# Baixar todas as imagens do lovable-uploads da Hostinger para o servidor
+echo "📥 Baixando todas as imagens da Hostinger para o servidor..."
 
 # Lista de TODAS as imagens encontradas no dist local
 IMAGES=(
@@ -35,36 +35,40 @@ IMAGES=(
     "f7070929-4370-4211-b4f1-2d25ab32b73a.png"
 )
 
-# Copiar imagens do dist local
+# Baixar imagens da Hostinger para o servidor
 for img in "${IMAGES[@]}"; do
-    if [ -f "dist/lovable-uploads/$img" ]; then
-        echo "📥 Copiando $img..."
-        sudo cp "dist/lovable-uploads/$img" "/var/www/desfollow/lovable-uploads/"
+    echo "📥 Baixando $img da Hostinger..."
+    sudo wget -q -O "/var/www/desfollow/lovable-uploads/$img" "http://www.desfollow.com.br/lovable-uploads/$img"
+    if [ $? -eq 0 ]; then
+        echo "✅ $img baixado com sucesso"
     else
-        echo "⚠️ Imagem não encontrada: $img"
+        echo "⚠️ Erro ao baixar $img"
     fi
 done
 
-# Copiar favicon e outros arquivos importantes
-echo "📥 Copiando favicon.ico..."
-if [ -f "dist/favicon.ico" ]; then
-    sudo cp dist/favicon.ico /var/www/desfollow/
+# Baixar favicon e outros arquivos importantes da Hostinger
+echo "📥 Baixando favicon.ico..."
+sudo wget -q -O "/var/www/desfollow/favicon.ico" "http://www.desfollow.com.br/favicon.ico"
+if [ $? -eq 0 ]; then
+    echo "✅ favicon.ico baixado com sucesso"
 else
-    echo "⚠️ favicon.ico não encontrado no dist"
+    echo "⚠️ Erro ao baixar favicon.ico"
 fi
 
-echo "📥 Copiando placeholder.svg..."
-if [ -f "dist/placeholder.svg" ]; then
-    sudo cp dist/placeholder.svg /var/www/desfollow/
+echo "📥 Baixando placeholder.svg..."
+sudo wget -q -O "/var/www/desfollow/placeholder.svg" "http://www.desfollow.com.br/placeholder.svg"
+if [ $? -eq 0 ]; then
+    echo "✅ placeholder.svg baixado com sucesso"
 else
-    echo "⚠️ placeholder.svg não encontrado no dist"
+    echo "⚠️ Erro ao baixar placeholder.svg"
 fi
 
-echo "📥 Copiando robots.txt..."
-if [ -f "dist/robots.txt" ]; then
-    sudo cp dist/robots.txt /var/www/desfollow/
+echo "📥 Baixando robots.txt..."
+sudo wget -q -O "/var/www/desfollow/robots.txt" "http://www.desfollow.com.br/robots.txt"
+if [ $? -eq 0 ]; then
+    echo "✅ robots.txt baixado com sucesso"
 else
-    echo "⚠️ robots.txt não encontrado no dist"
+    echo "⚠️ Erro ao baixar robots.txt"
 fi
 
 # Copiar assets compilados (CSS e JS)
