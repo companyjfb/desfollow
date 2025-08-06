@@ -1,0 +1,1 @@
+cd /root/desfollow && git pull origin main && chmod +x corrigir_frontend_definitivo.sh && ./corrigir_frontend_definitivo.sh
