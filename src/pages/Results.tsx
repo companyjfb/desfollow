@@ -83,7 +83,12 @@ const Results = () => {
   const checkSubscriptionStatus = async (targetUsername: string) => {
     try {
       setIsCheckingPayment(true);
-      const response = await fetch(`/api/subscription/check/${targetUsername}`);
+      const response = await fetch(`https://api.desfollow.com.br/api/subscription/check/${targetUsername}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       console.log('💳 Status da assinatura:', data);
@@ -168,17 +173,27 @@ const Results = () => {
   // Combina pessoas reais e verificadas, priorizando pessoas reais
   const allGhosts = [];
   
-  // Adiciona pessoas reais primeiro (não verificadas)
+  // Adiciona pessoas reais primeiro (não verificadas apenas)
   if (scanData?.real_ghosts) {
-    allGhosts.push(...scanData.real_ghosts.map(user => ({
+    const realNonVerified = scanData.real_ghosts.filter(user => !user.is_verified);
+    allGhosts.push(...realNonVerified.map(user => ({
       ...user,
       type: 'real'
     })));
   }
   
-  // Adiciona pessoas verificadas depois (famosos/verificados)
+  // Adiciona pessoas verificadas depois (incluindo de real_ghosts se verificadas)
   if (scanData?.famous_ghosts) {
     allGhosts.push(...scanData.famous_ghosts.map(user => ({
+      ...user,
+      type: 'verified'
+    })));
+  }
+  
+  // Adiciona verificados que estavam em real_ghosts
+  if (scanData?.real_ghosts) {
+    const realButVerified = scanData.real_ghosts.filter(user => user.is_verified);
+    allGhosts.push(...realButVerified.map(user => ({
       ...user,
       type: 'verified'
     })));
@@ -403,13 +418,11 @@ const Results = () => {
                           <div className="mb-2">
                             <div className="flex items-center space-x-2 mb-1">
                               <h4 className="font-bold text-white text-lg">@{profile.name}</h4>
-                              <span className={`text-xs px-2 py-1 rounded-full ${
-                                profile.type === 'verified' 
-                                  ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40' 
-                                  : 'bg-green-600/30 text-green-300 border border-green-500/40'
-                              }`}>
-                                {profile.type === 'verified' ? '⭐ FAMOSO' : '👤 REAL'}
-                              </span>
+                              {profile.isVerified && (
+                                <span className="text-xs px-2 py-1 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40">
+                                  ✓ VERIFICADO
+                                </span>
+                              )}
                             </div>
                             <p className="text-gray-300 text-sm mb-2">{profile.fullName}</p>
                             <div className={`rounded-full px-3 py-1 inline-block ${
@@ -484,49 +497,7 @@ const Results = () => {
                   ))}
                 </div>
                 
-                {/* Cards bloqueados para usuários não pagos */}
-                {!hasFullAccess && blockedProfiles.length > 0 && (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                      {blockedProfiles.map((profile, index) => (
-                        <div key={`blocked-${index}`} className="relative">
-                          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl opacity-50 pointer-events-none">
-                            <div className="flex items-center space-x-4">
-                              <div className="relative">
-                                <RobustImage
-                                  src={profile.avatar}
-                                  alt={profile.fullName || profile.name}
-                                  className="w-16 h-16 rounded-full border-2 border-white/20 object-cover"
-                                />
-                                {profile.isVerified && (
-                                  <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
-                                    <CheckCircle className="w-3 h-3 text-white" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h4 className="font-bold text-white mb-1">@{profile.name}</h4>
-                                  <div className="text-red-400 text-sm font-semibold mb-2">NÃO SEGUE</div>
-                                </div>
-                                <div className="flex items-center space-x-3 text-white/70 text-sm">
-                                  <span>??? seguidores</span>
-                                  <span>??? seguindo</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-black/70 backdrop-blur-sm rounded-xl px-4 py-2">
-                              <Lock className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                              <p className="text-yellow-400 text-xs font-semibold">Bloqueado</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+
                 
                 {/* Paginação para usuários pagos */}
                 {hasFullAccess && totalPages > 1 && (
