@@ -453,8 +453,8 @@ const Results = () => {
               </div>
             )}
 
-            {/* Locked Profiles Grid - Mostra quando há mais de 4 ghosts (apenas para usuários normais) */}
-            {totalGhosts > 4 && !isSpecialUser && (
+            {/* Locked Profiles Grid - Mostra quando há mais de 4 ghosts (apenas para usuários não pagos) */}
+            {totalGhosts > 4 && !hasFullAccess && (
               <>
                 <h4 className="text-lg font-bold text-white mb-4">🔒 Mais Perfis Bloqueados</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
