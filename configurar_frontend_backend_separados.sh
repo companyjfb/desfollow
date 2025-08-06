@@ -28,9 +28,6 @@ server {
     listen 80;
     server_name desfollow.com.br www.desfollow.com.br;
     
-    # Redirecionar HTTP para HTTPS (se necessário)
-    # return 301 https://$server_name$request_uri;
-    
     # Servir frontend diretamente
     root /var/www/desfollow;
     index index.html;
@@ -39,6 +36,11 @@ server {
     location / {
         try_files $uri $uri/ /index.html;
         
+        # Headers de segurança
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+        
         # Headers de cache para assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
             expires 1y;
@@ -46,10 +48,18 @@ server {
         }
     }
     
-    # Headers de segurança
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
+    # Rota específica para API (redirecionar para subdomínio)
+    location /api {
+        return 301 https://api.desfollow.com.br$request_uri;
+    }
+    
+    location /health {
+        return 301 https://api.desfollow.com.br$request_uri;
+    }
+    
+    location /docs {
+        return 301 https://api.desfollow.com.br$request_uri;
+    }
 }
 
 # Backend API - api.desfollow.com.br
