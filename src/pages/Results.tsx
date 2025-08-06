@@ -501,123 +501,137 @@ const Results = () => {
                     </div>
                   ))}
                 </div>
-                
-
-                
-                {/* Paginação funcional para usuários pagos quando há mais de 100 resultados */}
-                {hasFullAccess && totalPages > 1 && (
-                  <div className="flex flex-col items-center space-y-4 mb-8">
-                    {/* Informação sobre total e página atual */}
-                    <div className="text-white/70 text-sm">
-                      Mostrando {((currentPage - 1) * cardsPerPage) + 1} - {Math.min(currentPage * cardsPerPage, allProfiles.length)} de {allProfiles.length} perfis
-                    </div>
-                    
-                    {/* Controles de paginação */}
-                    <div className="flex items-center justify-center space-x-2">
-                      <Button
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/10 disabled:opacity-50"
-                      >
-                        <ChevronLeft className="w-4 h-4 mr-1" />
-                        Anterior
-                      </Button>
-                      
-                      <div className="flex items-center space-x-1">
-                        {/* Primeira página */}
-                        {currentPage > 3 && (
-                          <>
-                            <Button
-                              onClick={() => setCurrentPage(1)}
-                              variant="ghost"
-                              size="sm"
-                              className="w-8 h-8 text-white hover:bg-white/10"
-                            >
-                              1
-                            </Button>
-                            {currentPage > 4 && <span className="text-white/50 text-sm">...</span>}
-                          </>
-                        )}
-                        
-                        {/* Páginas ao redor da atual */}
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-                          
-                          if (pageNum < 1 || pageNum > totalPages) return null;
-                          
-                          return (
-                            <Button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              variant={currentPage === pageNum ? "default" : "ghost"}
-                              size="sm"
-                              className={`w-8 h-8 ${
-                                currentPage === pageNum 
-                                  ? "bg-blue-600 text-white hover:bg-blue-700" 
-                                  : "text-white hover:bg-white/10"
-                              }`}
-                            >
-                              {pageNum}
-                            </Button>
-                          );
-                        })}
-                        
-                        {/* Última página */}
-                        {currentPage < totalPages - 2 && totalPages > 5 && (
-                          <>
-                            {currentPage < totalPages - 3 && <span className="text-white/50 text-sm">...</span>}
-                            <Button
-                              onClick={() => setCurrentPage(totalPages)}
-                              variant="ghost"
-                              size="sm"
-                              className="w-8 h-8 text-white hover:bg-white/10"
-                            >
-                              {totalPages}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                      
-                      <Button
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/10 disabled:opacity-50"
-                      >
-                        Próxima
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-center mb-8">
-                  <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl p-4 border border-yellow-500/30">
-                    <p className="text-yellow-400 font-semibold text-sm mb-2">
-                      {hasFullAccess ? 
-                        `📊 Página ${currentPage} de ${totalPages} - Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
-                        "🔒 Conteúdo Bloqueado - Apenas 5 de " + allProfiles.length + " perfis visíveis"
-                      }
-                    </p>
-                    {!hasFullAccess && (
-                      <p className="text-white/70 text-xs">Desbloqueie todos os perfis com o plano premium</p>
-                    )}
-                  </div>
-                </div>
               </>
             )}
+
+            {/* Paginação funcional para usuários pagos quando há mais de 100 resultados */}
+            {hasFullAccess && totalPages > 1 && (
+              <div className="flex flex-col items-center space-y-4 mb-8">
+                {/* Informação sobre total e página atual */}
+                <div className="text-white/70 text-sm">
+                  Mostrando {((currentPage - 1) * cardsPerPage) + 1} - {Math.min(currentPage * cardsPerPage, allProfiles.length)} de {allProfiles.length} perfis
+                </div>
+                
+                {/* Controles de paginação */}
+                <div className="flex items-center justify-center space-x-2">
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.max(1, prev - 1));
+                      scrollToTop();
+                    }}
+                    disabled={currentPage === 1}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Anterior
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {/* Primeira página */}
+                    {currentPage > 3 && (
+                      <>
+                        <Button
+                          onClick={() => {
+                            setCurrentPage(1);
+                            scrollToTop();
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-8 text-white hover:bg-white/10"
+                        >
+                          1
+                        </Button>
+                        {currentPage > 4 && <span className="text-white/50 text-sm">...</span>}
+                      </>
+                    )}
+                    
+                    {/* Páginas ao redor da atual */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      if (pageNum < 1 || pageNum > totalPages) return null;
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          onClick={() => {
+                            setCurrentPage(pageNum);
+                            scrollToTop();
+                          }}
+                          variant={currentPage === pageNum ? "default" : "ghost"}
+                          size="sm"
+                          className={`w-8 h-8 ${
+                            currentPage === pageNum 
+                              ? "bg-blue-600 text-white hover:bg-blue-700" 
+                              : "text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    
+                    {/* Última página */}
+                    {currentPage < totalPages - 2 && totalPages > 5 && (
+                      <>
+                        {currentPage < totalPages - 3 && <span className="text-white/50 text-sm">...</span>}
+                        <Button
+                          onClick={() => {
+                            setCurrentPage(totalPages);
+                            scrollToTop();
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-8 text-white hover:bg-white/10"
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                      scrollToTop();
+                    }}
+                    disabled={currentPage === totalPages}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Próxima
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Status da paginação */}
+            <div className="text-center mb-8">
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl p-4 border border-yellow-500/30">
+                <p className="text-yellow-400 font-semibold text-sm mb-2">
+                  {hasFullAccess ? 
+                    `📊 Página ${currentPage} de ${totalPages} - Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
+                    "🔒 Conteúdo Bloqueado - Apenas 5 de " + allProfiles.length + " perfis visíveis"
+                  }
+                </p>
+                {!hasFullAccess && (
+                  <p className="text-white/70 text-xs">Desbloqueie todos os perfis com o plano premium</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Upgrade CTA - apenas para usuários não pagos */}

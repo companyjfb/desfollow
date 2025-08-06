@@ -515,16 +515,6 @@ const Analyzing = () => {
               </div>
               <div className="text-white/70 text-sm">Seguidores analisados</div>
             </div>
-            
-            {/* Mostrar parasitas apenas se houver */}
-            {simulatedParasites > 0 && (
-              <div className="mt-4 text-center">
-                <div className="text-xl font-bold text-orange-400">
-                  {simulatedParasites}
-                </div>
-                <div className="text-white/70 text-xs">Parasitas detectados</div>
-              </div>
-            )}
           </div>
 
           {/* Loading Animation */}
