@@ -688,45 +688,104 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
         raise HTTPException(status_code=500, detail=f"Erro ao processar webhook: {str(e)}")
 
 @router.get("/subscription/check/{username}")
-async def check_subscription_status(username: str, db: Session = Depends(get_db)):
+async def check_subscription_status(username: str, verify_with_api: bool = True, db: Session = Depends(get_db)):
     """
-    Verifica se um usuário tem assinatura ativa
+    Verifica se um usuário tem assinatura ativa com VERIFICAÇÃO DUPLA
     """
     try:
-        # Buscar assinatura do usuário
+        # 1. Buscar assinatura local
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
         
         if not subscription:
-            return JSONResponse({
-                "has_active_subscription": False,
-                "username": username,
-                "message": "Usuário não encontrado na base de assinaturas"
-            })
+            # Se não encontrou local, tentar buscar diretamente na Perfect Pay
+            if verify_with_api:
+                print(f"🔍 Usuário {username} não encontrado localmente. Verificando na Perfect Pay...")
+                sales_data = await get_perfect_pay_sales(username=username)
+                sales = sales_data.get("sales", {}).get("data", [])
+                
+                if sales:
+                    print(f"💡 Encontradas {len(sales)} vendas na Perfect Pay para {username}")
+                    # Criar assinatura baseada na venda mais recente
+                    latest_sale = max(sales, key=lambda x: x.get("date_created", ""))
+                    
+                    if latest_sale.get("sale_status") in ["approved", "completed"]:
+                        print(f"🆕 Criando assinatura local baseada na Perfect Pay para {username}")
+                        # Criar assinatura local
+                        from dateutil.relativedelta import relativedelta
+                        subscription = Subscription(
+                            username=username,
+                            perfect_pay_code=latest_sale.get("transaction_token"),
+                            perfect_pay_customer_email=latest_sale.get("customer", [{}])[0].get("email"),
+                            perfect_pay_customer_name=latest_sale.get("customer", [{}])[0].get("full_name"),
+                            subscription_status="active",
+                            monthly_amount=float(latest_sale.get("value", 29.0)),
+                            current_period_start=datetime.now(),
+                            current_period_end=datetime.now() + relativedelta(months=1),
+                            last_sale_status=2,  # approved
+                            total_payments_received=1
+                        )
+                        db.add(subscription)
+                        db.commit()
+                        print(f"✅ Assinatura criada localmente para {username}")
+            
+            if not subscription:
+                return JSONResponse({
+                    "has_active_subscription": False,
+                    "username": username,
+                    "message": "Usuário não encontrado na base de assinaturas",
+                    "verification_method": "local_and_api" if verify_with_api else "local_only"
+                })
         
-        # Verificar se a assinatura está ativa e válida
-        is_active = subscription.is_active()
+        # 2. Verificação local básica
+        is_active_local = subscription.is_active()
         is_payment_current = subscription.is_payment_current()
         days_remaining = subscription.days_until_expiry()
-        is_expiring_soon = subscription.is_expiring_soon()
+        
+        # 3. VERIFICAÇÃO DUPLA com Perfect Pay (apenas se habilitada)
+        is_active_perfect_pay = True
+        verification_method = "local_only"
+        
+        if verify_with_api and subscription:
+            print(f"🔍 Verificação dupla: consultando Perfect Pay para {username}")
+            is_active_perfect_pay = await verify_subscription_with_perfect_pay(username, subscription)
+            verification_method = "local_and_api"
+            
+            # Se Perfect Pay disse que não está ativo, atualizar banco local
+            if not is_active_perfect_pay and subscription.subscription_status == "active":
+                subscription.subscription_status = "cancelled"
+                db.commit()
+                print(f"🔄 Status local atualizado para cancelado baseado na Perfect Pay")
+        
+        # 4. Decisão final: deve estar ativo localmente E na Perfect Pay
+        final_status = is_active_local and is_payment_current and is_active_perfect_pay
+        
+        print(f"📊 Verificação final para {username}:")
+        print(f"   Local ativo: {is_active_local}")
+        print(f"   Pagamento atual: {is_payment_current}")
+        print(f"   Perfect Pay ativo: {is_active_perfect_pay}")
+        print(f"   Status final: {final_status}")
         
         return JSONResponse({
-            "has_active_subscription": is_active and is_payment_current,
+            "has_active_subscription": final_status,
             "username": username,
             "subscription_status": subscription.subscription_status,
-            "is_active": is_active,
+            "is_active_local": is_active_local,
             "is_payment_current": is_payment_current,
+            "is_active_perfect_pay": is_active_perfect_pay,
             "days_remaining": days_remaining,
-            "is_expiring_soon": is_expiring_soon,
+            "is_expiring_soon": subscription.is_expiring_soon(),
             "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
             "last_payment_date": subscription.last_payment_date.isoformat() if subscription.last_payment_date else None,
             "next_billing_date": subscription.next_billing_date.isoformat() if subscription.next_billing_date else None,
             "total_payments_received": subscription.total_payments_received,
             "monthly_amount": subscription.monthly_amount,
-            "perfect_pay_code": subscription.perfect_pay_code
+            "perfect_pay_code": subscription.perfect_pay_code,
+            "verification_method": verification_method
         })
         
     except Exception as e:
         print(f"❌ Erro ao verificar status de assinatura: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Erro ao verificar assinatura: {str(e)}")
 
 # Manter endpoint antigo para compatibilidade durante transição
@@ -735,7 +794,76 @@ async def check_payment_status_legacy(username: str, db: Session = Depends(get_d
     """
     LEGACY: Redireciona para verificação de assinatura
     """
-    return await check_subscription_status(username, db)
+    return await check_subscription_status(username, True, db)
+
+@router.post("/subscription/sync/{username}")
+async def force_sync_with_perfect_pay(username: str, db: Session = Depends(get_db)):
+    """
+    Força sincronização com Perfect Pay para corrigir inconsistências
+    """
+    try:
+        print(f"🔄 Iniciando sincronização forçada para {username}")
+        
+        # Buscar vendas na Perfect Pay
+        sales_data = await get_perfect_pay_sales(username=username)
+        sales = sales_data.get("sales", {}).get("data", [])
+        
+        if not sales:
+            return JSONResponse({
+                "success": False,
+                "message": f"Nenhuma venda encontrada na Perfect Pay para {username}",
+                "sales_found": 0
+            })
+        
+        # Buscar/criar assinatura local
+        subscription = db.query(Subscription).filter(Subscription.username == username).first()
+        
+        # Analisar venda mais recente
+        latest_sale = max(sales, key=lambda x: x.get("date_created", ""))
+        sale_status = latest_sale.get("sale_status")
+        
+        if not subscription:
+            # Criar nova assinatura
+            from dateutil.relativedelta import relativedelta
+            subscription = Subscription(
+                username=username,
+                perfect_pay_code=latest_sale.get("transaction_token"),
+                perfect_pay_customer_email=latest_sale.get("customer", [{}])[0].get("email"),
+                perfect_pay_customer_name=latest_sale.get("customer", [{}])[0].get("full_name"),
+                subscription_status="active" if sale_status in ["approved", "completed"] else "cancelled",
+                monthly_amount=float(latest_sale.get("value", 29.0)),
+                current_period_start=datetime.now() if sale_status in ["approved", "completed"] else None,
+                current_period_end=datetime.now() + relativedelta(months=1) if sale_status in ["approved", "completed"] else None,
+                last_sale_status=2 if sale_status == "approved" else 10 if sale_status == "completed" else 6,
+                total_payments_received=len([s for s in sales if s.get("sale_status") in ["approved", "completed"]])
+            )
+            db.add(subscription)
+            action = "created"
+        else:
+            # Atualizar assinatura existente
+            subscription.subscription_status = "active" if sale_status in ["approved", "completed"] else "cancelled"
+            subscription.last_sale_status = 2 if sale_status == "approved" else 10 if sale_status == "completed" else 6
+            subscription.total_payments_received = len([s for s in sales if s.get("sale_status") in ["approved", "completed"]])
+            action = "updated"
+        
+        db.commit()
+        
+        print(f"✅ Sincronização completa para {username}: {action}")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Sincronização completa - assinatura {action}",
+            "username": username,
+            "sales_found": len(sales),
+            "latest_sale_status": sale_status,
+            "subscription_status": subscription.subscription_status,
+            "action": action
+        })
+        
+    except Exception as e:
+        print(f"❌ Erro na sincronização forçada: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro na sincronização: {str(e)}")
 
 def get_payment_method_name(method_enum: int) -> str:
     """Converte enum de método de pagamento para string"""
@@ -763,4 +891,117 @@ def get_payment_type_name(type_enum: int) -> str:
         5: 'free_price',
         6: 'credit_card_upsell'
     }
-    return types.get(type_enum, 'unknown') 
+    return types.get(type_enum, 'unknown')
+
+# =============================================================================
+# VERIFICAÇÃO DUPLA COM API PERFECT PAY
+# =============================================================================
+
+PERFECT_PAY_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIzIiwianRpIjoiZDYwMDY0YWIwYzhjOWY1NGZhMTY1OGQzMzJiOGZhOTNhNTg4MTY0MThmMmYxYmYyMjM2N2JiNTkxNWRmYjQ1NDhjZjAzOTg3ODg0YjgwN2UiLCJpYXQiOjE3NTQ1MDkyNTIuODcwOTMyLCJuYmYiOjE3NTQ1MDkyNTIuODcwOTM1LCJleHAiOjE5MTIyNzU2NTIuODU1ODI4LCJzdWIiOiIyNTYyNzU4Iiwic2NvcGVzIjpbInBlcnNvbmFsX2FjY2VzcyJdfQ.iXYukZAu7kKC_4xBkPO5F9ywh7En28L-e-Yqa6hWk_n3YPZ7nHVMsaKRH_MU5RdKMun2S97P4cZ7KiS0dW-TKWK07s5RE_sSmHsQrchb-P8c5svPfMF9qjta1boX0BJLfvfBMdZx8_-4Ba61mwGCdwbJXH8n3nKDBfWCUMkKEkgoAfa2H1qJ9HM7KUXXRj9WUyAk8GJ8fqkVZdACNsMCQHMw-igjbblEYznFgDo7PxVeYhtS1Pfg1cOTy3IrwSmpv--mPhrLYIKGYJ5kPT4kSnIKjst-qa5ZIuwTN-PD91VBIpFDTeTXymFbgHIF-tXYb60746TcjyH11OHK6lpaAOr0ejJiCSsQPX3_82IBghFSfvzH2PDP7UdNtEzUc0-_Qdrn3CYS_NeieduPsNZVSiIHna0-t7DCycNAT-VNxTsSQzBDEbZTVlKAkkY7-aSWPKA6fPHhzlFmxAvzRV0nOlrcBwAk7_74WeXiDnn3A9YJsSfBvz0BzmqRfwxmqWFVp0ayEAp9iJmaZLDBnGGOM0yclSSrdfSZCO9lg2O4-GdZZdKWFwmUtWhBpaYVAe6Z983NmuAS1A-ToC-bl2FW9mcYM9UPXQ3RTWeGY2ugFDMURU9QfSV5VuLhLusLrvX1xQwnjUbu5XMtfE2FPu4sWyTFKuJKB3CmBDI7yLENxLk"
+
+async def get_perfect_pay_sales(username: str = None, transaction_token: str = None) -> Dict[str, Any]:
+    """
+    Busca vendas na API da Perfect Pay para verificar status real da assinatura
+    """
+    try:
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {PERFECT_PAY_ACCESS_TOKEN}"
+        }
+        
+        # Buscar vendas dos últimos 60 dias para o usuário
+        from datetime import datetime, timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=60)
+        
+        payload = {
+            "start_date_sale": start_date.strftime("%Y-%m-%d"),
+            "end_date_sale": end_date.strftime("%Y-%m-%d"),
+            "sale_status": [2, 10]  # approved e completed
+        }
+        
+        if transaction_token:
+            payload["transaction_token"] = transaction_token
+        
+        print(f"🔍 Consultando Perfect Pay API para verificar vendas...")
+        print(f"📅 Período: {start_date.strftime('%Y-%m-%d')} a {end_date.strftime('%Y-%m-%d')}")
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                "https://app.perfectpay.com.br/api/v1/sales/get",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ Perfect Pay API - {data.get('sales', {}).get('total_items', 0)} vendas encontradas")
+                
+                if username:
+                    # Filtrar vendas por username nos metadados
+                    filtered_sales = []
+                    for sale in data.get("sales", {}).get("data", []):
+                        metadata = sale.get("metadata", {})
+                        sale_username = (
+                            metadata.get("username") or
+                            metadata.get("utm_perfect") or
+                            metadata.get("utm_content") or
+                            (metadata.get("src", "").replace("user_", "") if metadata.get("src", "").startswith("user_") else None)
+                        )
+                        
+                        if sale_username == username:
+                            filtered_sales.append(sale)
+                    
+                    print(f"🎯 Vendas filtradas para {username}: {len(filtered_sales)}")
+                    return {"sales": {"data": filtered_sales, "total_items": len(filtered_sales)}}
+                
+                return data
+            else:
+                print(f"❌ Erro na Perfect Pay API: {response.status_code} - {response.text}")
+                return {"sales": {"data": [], "total_items": 0}}
+                
+    except Exception as e:
+        print(f"❌ Erro ao consultar Perfect Pay API: {e}")
+        return {"sales": {"data": [], "total_items": 0}}
+
+async def verify_subscription_with_perfect_pay(username: str, subscription: Subscription) -> bool:
+    """
+    Verifica o status real da assinatura na Perfect Pay
+    """
+    try:
+        # 1. Buscar por transaction_token específico se existir
+        if subscription.perfect_pay_code:
+            sales_data = await get_perfect_pay_sales(transaction_token=subscription.perfect_pay_code)
+        else:
+            # 2. Buscar por username nos metadados
+            sales_data = await get_perfect_pay_sales(username=username)
+        
+        sales = sales_data.get("sales", {}).get("data", [])
+        
+        if not sales:
+            print(f"⚠️ Nenhuma venda encontrada na Perfect Pay para {username}")
+            return False
+        
+        # 3. Verificar a venda mais recente
+        latest_sale = max(sales, key=lambda x: x.get("date_created", ""))
+        sale_status = latest_sale.get("sale_status")
+        
+        print(f"📊 Status mais recente na Perfect Pay: {sale_status}")
+        
+        # 4. Verificar se ainda está ativo
+        if sale_status in ["approved", "completed"]:
+            print(f"✅ Assinatura confirmada ativa na Perfect Pay para {username}")
+            return True
+        elif sale_status in ["cancelled", "refunded", "expired"]:
+            print(f"❌ Assinatura cancelada/expirada na Perfect Pay para {username}")
+            # Atualizar status local
+            subscription.subscription_status = "cancelled"
+            return False
+        else:
+            print(f"⚠️ Status desconhecido na Perfect Pay: {sale_status}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Erro ao verificar assinatura na Perfect Pay: {e}")
+        return True  # Em caso de erro, manter status local para não bloquear usuário 
