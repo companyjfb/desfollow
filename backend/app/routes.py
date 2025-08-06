@@ -822,12 +822,12 @@ async def force_subscription_active(username: str, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
 
 @router.get("/subscription/check/{username}")
-async def check_subscription_status(username: str, verify_with_api: bool = True, db: Session = Depends(get_db)):
+async def check_subscription_status(username: str, db: Session = Depends(get_db)):
     """
-    Verifica se um usuário tem assinatura ativa com VERIFICAÇÃO DUPLA
+    Verifica se um usuário tem assinatura ativa - APENAS BANCO DE DADOS LOCAL
     """
     try:
-        # 1. Buscar assinatura local
+        # Buscar assinatura local
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
         
         if not subscription:
