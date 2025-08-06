@@ -29,7 +29,8 @@ sudo certbot certonly --standalone \
     -d api.desfollow.com.br \
     --agree-tos \
     --non-interactive \
-    --email admin@desfollow.com.br
+    --email admin@desfollow.com.br \
+    --expand
 
 if [ $? -eq 0 ]; then
     echo "✅ Certificados SSL gerados com sucesso!"

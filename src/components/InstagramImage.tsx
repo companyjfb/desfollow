@@ -28,8 +28,8 @@ const InstagramImage: React.FC<InstagramImageProps> = ({
       setHasError(true);
       console.log('❌ Erro ao carregar imagem:', src);
       
-      // Se é uma URL do Instagram, tenta usar o proxy
-      if (src.includes('instagram.com') || src.includes('cdninstagram.com')) {
+      // Se é uma URL do Instagram/Facebook CDN, tenta usar o proxy
+      if (src.includes('instagram.com') || src.includes('cdninstagram.com') || src.includes('fbcdn.net') || src.includes('scontent')) {
         const proxyUrl = window.location.hostname === 'localhost' 
     ? `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(src)}`
     : `https://api.desfollow.com.br/api/proxy-image?url=${encodeURIComponent(src)}`;

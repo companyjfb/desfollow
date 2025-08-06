@@ -2,8 +2,8 @@ import json
 import os
 from uuid import uuid4
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from .ig import get_ghosts_with_profile, get_user_id_from_rapidapi, get_user_data_from_rapidapi
@@ -11,6 +11,7 @@ from .database import get_db, get_or_create_user, save_scan_result, get_user_sca
 from sqlalchemy.orm import Session
 import asyncio
 import requests
+import httpx
 import os
 import time
 from fastapi.responses import StreamingResponse
@@ -226,8 +227,8 @@ async def run_scan_with_database(job_id: str, username: str, db: Session):
                 "count": 0,
                 "real_ghosts_count": 0,
                 "famous_ghosts_count": 0,
-                "followers_count": 0,
-                "following_count": 0,
+                "followers_count": profile_info.get('followers_count', 0),  # CORRIGIDO: usar o valor real imediatamente
+                "following_count": profile_info.get('following_count', 0),  # CORRIGIDO: usar o valor real imediatamente  
                 "profile_followers_count": profile_info.get('followers_count', 0),
                 "profile_following_count": profile_info.get('following_count', 0)
             })
@@ -478,18 +479,47 @@ def health_check():
     return {"status": "healthy", "jobs_active": active_jobs}
 
 @router.get("/proxy-image")
-async def proxy_image(url: str):
+async def proxy_image(url: str = Query(..., description="URL da imagem do Instagram")):
     """
     Endpoint para fazer proxy de uma imagem do Instagram.
     """
     try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
+        # Headers para parecer um navegador real
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
         
-        def generate():
-            for chunk in response.iter_content(chunk_size=8192):
-                yield chunk
-        
-        return StreamingResponse(generate(), media_type="image/jpeg")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            
+            # Detectar o tipo de conteúdo
+            content_type = response.headers.get('Content-Type', 'image/jpeg')
+            
+            # Headers CORS para permitir acesso do frontend
+            headers_out = {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Cache-Control': 'public, max-age=3600',  # Cache por 1 hora
+            }
+            
+            return Response(
+                content=response.content,
+                media_type=content_type,
+                headers=headers_out
+            )
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=408, detail="Timeout ao carregar imagem")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"Erro HTTP: {e.response.status_code}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao fazer proxy da imagem: {e}") 
+        print(f"❌ Erro no proxy de imagem: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer proxy da imagem: {str(e)}") 
