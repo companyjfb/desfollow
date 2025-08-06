@@ -778,6 +778,12 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
             print(f"📋 Status do pagamento: {webhook_data.sale_status_enum} para {username}")
         
         return JSONResponse({"status": "success", "message": "Webhook de assinatura processado com sucesso"})
+        
+    except Exception as e:
+        print(f"❌ Erro ao processar webhook Perfect Pay: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao processar webhook: {str(e)}")
 
 @router.post("/subscription/force-active/{username}")
 async def force_subscription_active(username: str, db: Session = Depends(get_db)):
