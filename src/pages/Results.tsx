@@ -607,7 +607,7 @@ const Results = () => {
                 <Button
                   onClick={() => {
                     // NOVA ESTRATÉGIA: Usar hook para preservar TODOS os parâmetros
-                    const baseUrl = 'https://go.perfectpay.com.br/PPU38CPTTI1';
+                    const baseUrl = 'https://checkout.perfectpay.com.br/pay/PPU38CPTT5E';
                     
                     // Debug dos parâmetros atuais
                     debugParams();
@@ -650,7 +650,7 @@ const Results = () => {
                     console.log('🎯 PARÂMETROS FINAIS:', additionalParams);
                     console.log('🔗 URL COMPLETA DO CHECKOUT:', checkoutUrl);
                     
-                    window.open(checkoutUrl, '_blank');
+                    window.location.href = checkoutUrl;
                   }}
                   className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"
                 >
