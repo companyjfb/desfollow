@@ -57,6 +57,7 @@ curl -X POST https://api.desfollow.com.br/api/webhook/perfect-pay \
     "plan_itens": [],
     "customer": {"email": "test@test.com", "full_name": "Test User"},
     "metadata": {"username": "testuser"},
+    "webhook_owner": "desfollow",
     "commission": []
   }' || echo "❌ Erro ao testar webhook"
 

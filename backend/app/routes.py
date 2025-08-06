@@ -529,34 +529,64 @@ async def proxy_image(url: str = Query(..., description="URL da imagem do Instag
 # =============================================================================
 
 class PerfectPayWebhookData(BaseModel):
-    """Modelo para dados do webhook da Perfect Pay"""
+    """Modelo para dados do webhook da Perfect Pay - ESTRUTURA REAL"""
     token: str
     code: str
     sale_amount: float
     currency_enum: int
+    currency_enum_key: Optional[str] = None
     coupon_code: Optional[str] = None
     installments: int
     installment_amount: Optional[float] = None
-    shipping_type_enum: int
+    shipping_type_enum: Optional[int] = None
+    shipping_type_enum_key: Optional[str] = None
     shipping_amount: Optional[float] = None
     payment_method_enum: int
+    payment_method_enum_key: Optional[str] = None
     payment_type_enum: int
+    payment_type_enum_key: Optional[str] = None
+    payment_format_enum: Optional[int] = None
+    payment_format_enum_key: Optional[str] = None
+    original_code: Optional[str] = None
     billet_url: Optional[str] = None
     billet_number: Optional[str] = None
     billet_expiration: Optional[str] = None
     quantity: int
     sale_status_enum: int
+    sale_status_enum_key: Optional[str] = None
     sale_status_detail: str
     date_created: str
     date_approved: Optional[str] = None
+    tracking: Optional[str] = None
+    url_tracking: Optional[str] = None
+    checkout_type_enum: Optional[str] = None
+    academy_access_url: Optional[str] = None
     product: Dict[str, Any]
     plan: Dict[str, Any]
     plan_itens: List[Any]
     customer: Dict[str, Any]
     metadata: Dict[str, Any]
+    subscription: Optional[Dict[str, Any]] = None
     webhook_owner: str
     commission: List[Dict[str, Any]]
-    marketplaces: Optional[Dict[str, Any]] = None
+    url_send_webhook_pay: Optional[str] = None
+
+def get_extraction_method(metadata: Dict, username: str) -> str:
+    """Retorna qual método foi usado para extrair o username"""
+    if metadata.get('utm_perfect') == username:
+        return "utm_perfect (principal)"
+    elif metadata.get('src', '').replace('user_', '') == username:
+        return "src field (user_prefix)"
+    elif metadata.get('utm_content') == username:
+        return "utm_content"
+    elif metadata.get('username') == username:
+        return "username field"
+    elif metadata.get('utm_source') == username:
+        return "utm_source"
+    elif metadata.get('utm_campaign') == username:
+        return "utm_campaign"
+    else:
+        return "email fallback"
 
 @router.post("/webhook/perfect-pay")
 async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session = Depends(get_db)):
@@ -565,30 +595,41 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
     """
     try:
         print(f"🎯 Webhook Perfect Pay recebido - Código: {webhook_data.code}")
-        print(f"📊 Status da venda: {webhook_data.sale_status_enum}")
+        print(f"📊 Status da venda: {webhook_data.sale_status_enum} ({webhook_data.sale_status_enum_key})")
         print(f"💰 Valor: R$ {webhook_data.sale_amount}")
         print(f"👤 Cliente: {webhook_data.customer.get('email', 'N/A')}")
+        print(f"📧 Email: {webhook_data.customer.get('email')}")
+        print(f"📱 Telefone: {webhook_data.customer.get('phone_formated_ddi', 'N/A')}")
+        print(f"🔑 Webhook Owner: {webhook_data.webhook_owner}")
+        if webhook_data.subscription:
+            print(f"📋 Assinatura: {webhook_data.subscription.get('code')} - Status: {webhook_data.subscription.get('status')}")
+            print(f"📅 Próxima cobrança: {webhook_data.subscription.get('next_charge_date')}")
         
-        # Extrair username do metadata com ESTRATÉGIA MÚLTIPLA
+        # Extrair username do metadata com ESTRATÉGIA MÚLTIPLA OTIMIZADA
         username = None
         if webhook_data.metadata:
-            # 1. PRIORIDADE: Parâmetro dedicado 'username'
-            username = webhook_data.metadata.get('username')
+            print(f"🔍 Metadata recebido: {webhook_data.metadata}")
             
-            # 2. BACKUP: UTM personalizado 'utm_perfect'  
-            if not username:
-                username = webhook_data.metadata.get('utm_perfect')
+            # 1. PRIORIDADE: UTM personalizado 'utm_perfect' (principal)
+            username = webhook_data.metadata.get('utm_perfect')
             
-            # 3. BACKUP: Extrair do campo 'src' (user_USERNAME)
+            # 2. BACKUP: Extrair do campo 'src' (user_USERNAME)
             if not username and webhook_data.metadata.get('src'):
                 src_value = webhook_data.metadata.get('src', '')
                 if src_value.startswith('user_'):
                     username = src_value.replace('user_', '')
             
-            # 4. FALLBACK: UTMs tradicionais (para compatibilidade)
+            # 3. BACKUP: UTM content
+            if not username:
+                username = webhook_data.metadata.get('utm_content')
+            
+            # 4. FALLBACK: Parâmetro dedicado 'username'
+            if not username:
+                username = webhook_data.metadata.get('username')
+            
+            # 5. ÚLTIMO RECURSO: UTMs tradicionais
             if not username:
                 username = (
-                    webhook_data.metadata.get('utm_content') or
                     webhook_data.metadata.get('utm_source') or
                     webhook_data.metadata.get('utm_campaign')
                 )
@@ -606,12 +647,19 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
                         break
         
         if not username:
-            print("⚠️ Username não encontrado nos metadados do webhook")
-            print(f"🔍 Metadados recebidos: {webhook_data.metadata}")
-            # Retornar sucesso para não quebrar o webhook, mas logar para debug
-            return JSONResponse({"status": "received", "message": "Username não encontrado nos metadados"})
+            print(f"❌ Não foi possível extrair username do webhook!")
+            print(f"📋 Metadata disponível: {webhook_data.metadata}")
+            # FALLBACK: usar email como base para username
+            email = webhook_data.customer.get('email')
+            if email:
+                username = email.split('@')[0]
+                print(f"💡 FALLBACK: Usando parte do email como username: {username}")
+            
+            if not username:
+                raise HTTPException(status_code=400, detail="Username não encontrado no metadata do webhook")
         
-        print(f"🎯 Username extraído: {username}")
+        print(f"✅ Username extraído: {username}")
+        print(f"📋 Método de extração usado: {get_extraction_method(webhook_data.metadata, username)}")
         
         # Buscar assinatura existente para este usuário
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
@@ -657,6 +705,18 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
                 subscription.next_billing_date = subscription.current_period_end
                 subscription.last_payment_date = datetime.utcnow()
                 subscription.total_payments_received = 1
+                
+                # Se há dados de assinatura da PerfectPay, usar a data correta
+                if webhook_data.subscription and webhook_data.subscription.get('next_charge_date'):
+                    from dateutil.parser import parse
+                    try:
+                        next_charge = parse(webhook_data.subscription['next_charge_date'])
+                        subscription.next_billing_date = next_charge
+                        subscription.current_period_end = next_charge
+                        print(f"📅 Data de próxima cobrança da PerfectPay: {next_charge}")
+                    except:
+                        print(f"⚠️ Erro ao parse da data, usando data padrão")
+                
                 print(f"🎉 Nova assinatura ATIVA criada para {username}")
                 print(f"📅 Válida até: {subscription.current_period_end}")
             else:
