@@ -601,7 +601,7 @@ const Results = () => {
                 <Button
                   onClick={() => {
                     // Estratégia múltipla para preservar username E parâmetros UTM originais
-                    const baseUrl = 'https://checkout.perfectpay.com.br/pay/PPU38CPTT5E';
+                    const baseUrl = 'https://go.perfectpay.com.br/PPU38CPTTI1';
                     const params = new URLSearchParams();
                     
                     // Preservar parâmetros UTM originais da URL atual
@@ -644,7 +644,7 @@ const Results = () => {
                   className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"
                 >
                   <Zap className="w-6 h-6 mr-3" />
-                  Desbloquear por R$ 29
+                  Desbloquear por R$ 5 (TESTE)
                 </Button>
                 
                 <div className="flex items-center justify-center space-x-8 text-white/80 text-base">
