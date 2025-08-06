@@ -1,5 +1,5 @@
 /**
- * Converte URLs de imagens do Instagram para usar o proxy transparente do Nginx
+ * Converte URLs de imagens do Instagram para usar diretamente a API de proxy
  */
 export function getInstagramImageUrl(originalUrl: string): string {
   // Se não é uma URL de imagem do Instagram/Facebook, retorna original
@@ -18,22 +18,17 @@ export function getInstagramImageUrl(originalUrl: string): string {
   }
 
   try {
-    // Remove protocolo da URL original
-    const urlWithoutProtocol = originalUrl.replace(/^https?:\/\//, '');
+    // Usa diretamente a API de proxy que funciona
+    const apiProxyUrl = window.location.hostname === 'localhost' 
+      ? `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(originalUrl)}`
+      : `https://api.desfollow.com.br/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
     
-    // Constrói URL do proxy transparente
-    const baseUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000'  // Para desenvolvimento local
-      : 'https://www.desfollow.com.br';  // Para produção
-    
-    const proxyUrl = `${baseUrl}/instagram-proxy/${urlWithoutProtocol}`;
-    
-    console.log('🔄 Convertendo URL Instagram:', {
+    console.log('🔄 Convertendo URL Instagram (API direta):', {
       original: originalUrl,
-      proxy: proxyUrl
+      proxy: apiProxyUrl
     });
     
-    return proxyUrl;
+    return apiProxyUrl;
   } catch (error) {
     console.error('❌ Erro ao converter URL Instagram:', error);
     return originalUrl;
