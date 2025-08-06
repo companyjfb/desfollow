@@ -77,9 +77,6 @@ const Results = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [cardsPerPage] = useState(100);
   
-  // ✅ REGRA ESPECIAL: jordanbitencourt vê todos os resultados
-  const isSpecialUser = username === 'jordanbitencourt';
-  
   // Função para verificar status de assinatura
   const checkSubscriptionStatus = async (targetUsername: string) => {
     try {
@@ -103,7 +100,8 @@ const Results = () => {
   
   // 🔍 DEBUG: Log para verificar dados
   console.log('🔍 DEBUG - Username:', username);
-  console.log('🔍 DEBUG - Is Special User:', isSpecialUser);
+  console.log('🔍 DEBUG - Is Paid User:', isPaidUser);
+  console.log('🔍 DEBUG - Is Checking Payment:', isCheckingPayment);
   console.log('🔍 DEBUG - Scan Data:', scanData);
   console.log('🔍 DEBUG - Real Ghosts:', scanData?.real_ghosts?.length || 0);
   console.log('🔍 DEBUG - Famous Ghosts:', scanData?.famous_ghosts?.length || 0);
@@ -182,8 +180,8 @@ const Results = () => {
     })));
   }
   
-  // Determinar se usuário tem acesso completo
-  const hasFullAccess = isSpecialUser || isPaidUser;
+  // Determinar se usuário tem acesso completo - APENAS por pagamento
+  const hasFullAccess = isPaidUser;
   
   // ✅ ORDEM OTIMIZADA: Primeiro reais, depois verificados
   const allProfiles = allGhosts.map(user => ({
@@ -199,22 +197,31 @@ const Results = () => {
   const freeUserProfiles = allProfiles.slice(0, 5);
   const blockedProfiles = allProfiles.slice(5, 15); // Máximo 10 bloqueados
   
-  // Calcular paginação
-  const totalProfiles = hasFullAccess ? allProfiles.length : freeUserProfiles.length;
-  const totalPages = Math.ceil(totalProfiles / cardsPerPage);
-  const startIndex = (currentPage - 1) * cardsPerPage;
-  const endIndex = startIndex + cardsPerPage;
+  // Calcular paginação CORRIGIDA
+  let visibleProfiles = [];
+  let totalPages = 1;
   
-  // Perfis visíveis baseado na paginação
-  const visibleProfiles = hasFullAccess 
-    ? allProfiles.slice(startIndex, endIndex)
-    : freeUserProfiles;
+  if (hasFullAccess) {
+    // Para usuários pagos: paginação completa
+    const totalProfiles = allProfiles.length;
+    totalPages = Math.ceil(totalProfiles / cardsPerPage);
+    const startIndex = (currentPage - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    visibleProfiles = allProfiles.slice(startIndex, endIndex);
+  } else {
+    // Para usuários não pagos: apenas 5 cards, sem paginação
+    visibleProfiles = freeUserProfiles;
+    totalPages = 1;
+  }
 
   // 🔍 DEBUG: Verificar dados processados
   console.log('🔍 DEBUG - All Ghosts Length:', allGhosts.length);
+  console.log('🔍 DEBUG - All Profiles Length:', allProfiles.length);
   console.log('🔍 DEBUG - Visible Profiles Length:', visibleProfiles.length);
-  console.log('🔍 DEBUG - Is Special User (again):', isSpecialUser);
-  console.log('🔍 DEBUG - All Ghosts Sample:', allGhosts.slice(0, 5));
+  console.log('🔍 DEBUG - Total Pages:', totalPages);
+  console.log('🔍 DEBUG - Current Page:', currentPage);
+  console.log('🔍 DEBUG - Has Full Access:', hasFullAccess);
+  console.log('🔍 DEBUG - All Ghosts Sample:', allGhosts.slice(0, 3));
 
   // Perfis bloqueados (simulados) - apenas para usuários normais
   const blurredProfiles = Array.from({ length: 8 }, (_, i) => ({
@@ -558,8 +565,8 @@ const Results = () => {
                   <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl p-4 border border-yellow-500/30">
                     <p className="text-yellow-400 font-semibold text-sm mb-2">
                       {hasFullAccess ? 
-                        `📊 Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
-                        "🔒 Conteúdo Bloqueado"
+                        `📊 Página ${currentPage} de ${totalPages} - Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
+                        "🔒 Conteúdo Bloqueado - Apenas 5 de " + allProfiles.length + " perfis visíveis"
                       }
                     </p>
                     {!hasFullAccess && (
