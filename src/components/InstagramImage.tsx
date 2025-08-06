@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getInstagramImageUrl } from '../utils/instagram-image-url';
 
 interface InstagramImageProps {
   src: string;
@@ -13,12 +14,16 @@ const InstagramImage: React.FC<InstagramImageProps> = ({
   className, 
   fallback = '/placeholder.svg' 
 }) => {
-  const [imgSrc, setImgSrc] = useState<string>(src);
+  const [imgSrc, setImgSrc] = useState<string>('');
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setImgSrc(src);
+    // Usar proxy transparente automaticamente para imagens Instagram
+    const processedUrl = getInstagramImageUrl(src);
+    console.log('🔄 Processando imagem:', { original: src, processed: processedUrl });
+    
+    setImgSrc(processedUrl);
     setHasError(false);
     setIsLoading(true);
   }, [src]);
@@ -26,15 +31,15 @@ const InstagramImage: React.FC<InstagramImageProps> = ({
   const handleError = () => {
     if (!hasError) {
       setHasError(true);
-      console.log('❌ Erro ao carregar imagem:', src);
+      console.log('❌ Erro ao carregar imagem (proxy transparente falhou):', imgSrc);
       
-      // Se é uma URL do Instagram/Facebook CDN, tenta usar o proxy
+      // Se o proxy transparente falhou, tenta o proxy da API como backup
       if (src.includes('instagram.com') || src.includes('cdninstagram.com') || src.includes('fbcdn.net') || src.includes('scontent')) {
-        const proxyUrl = window.location.hostname === 'localhost' 
-    ? `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(src)}`
-    : `https://api.desfollow.com.br/api/proxy-image?url=${encodeURIComponent(src)}`;
-        console.log('🔄 Tentando proxy:', proxyUrl);
-        setImgSrc(proxyUrl);
+        const apiProxyUrl = window.location.hostname === 'localhost' 
+          ? `http://localhost:8000/api/proxy-image?url=${encodeURIComponent(src)}`
+          : `https://api.desfollow.com.br/api/proxy-image?url=${encodeURIComponent(src)}`;
+        console.log('🔄 Tentando proxy da API como backup:', apiProxyUrl);
+        setImgSrc(apiProxyUrl);
         setHasError(false);
         return;
       }
@@ -42,7 +47,8 @@ const InstagramImage: React.FC<InstagramImageProps> = ({
       // Se não funcionou, usa o fallback
       setImgSrc(fallback);
     } else {
-      // Se já tentou o proxy e falhou, usa o fallback
+      // Se já tentou tudo e falhou, usa o fallback
+      console.log('❌ Todas as tentativas falharam, usando fallback');
       setImgSrc(fallback);
     }
   };
