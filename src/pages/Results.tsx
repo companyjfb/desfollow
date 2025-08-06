@@ -397,46 +397,42 @@ const Results = () => {
               <>
                 <div className="space-y-4 mb-8">
                   {visibleProfiles.map((profile, index) => (
-                    <div key={index} className={`bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-md rounded-xl p-5 border border-white/10 transition-all duration-300 shadow-lg ${
-                      profile.type === 'verified' ? 'hover:border-purple-400/50' : 'hover:border-red-400/50'
-                    }`}>
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <RobustImage
-                            src={profile.avatar}
-                            alt={profile.name}
-                            className={`w-14 h-14 rounded-full object-cover border-2 shadow-lg ${
-                              profile.type === 'verified' ? 'border-purple-400/50' : 'border-red-400/50'
-                            }`}
-                          />
-                          <div className={`absolute -bottom-1 -right-1 rounded-full p-1 ${
-                            profile.type === 'verified' ? 'bg-purple-500' : 'bg-red-500'
-                          }`}>
-                            {profile.type === 'verified' ? (
-                              <Star className="w-3 h-3 text-white" />
-                            ) : (
-                              <TrendingDown className="w-3 h-3 text-white" />
-                            )}
+                                          <div key={index} className={`bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-md rounded-xl p-5 border border-white/10 transition-all duration-300 shadow-lg ${
+                        profile.type === 'verified' ? 'hover:border-blue-400/50' : 'hover:border-red-400/50'
+                      }`}>
+                        <div className="flex items-center space-x-4">
+                          <div className="relative">
+                            <RobustImage
+                              src={profile.avatar}
+                              alt={profile.name}
+                              className={`w-14 h-14 rounded-full object-cover border-2 shadow-lg ${
+                                profile.type === 'verified' ? 'border-blue-400/50' : 'border-red-400/50'
+                              }`}
+                              style={{ marginTop: '-1px' }}
+                            />
+                            <div className={`absolute -bottom-1 -right-1 rounded-full p-1 ${
+                              profile.type === 'verified' ? 'bg-blue-500' : 'bg-red-500'
+                            }`}>
+                              {profile.type === 'verified' ? (
+                                <Star className="w-3 h-3 text-white" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3 text-white" />
+                              )}
+                            </div>
                           </div>
-                        </div>
                         <div className="flex-1">
                           <div className="mb-2">
                             <div className="flex items-center space-x-2 mb-1">
                               <h4 className="font-bold text-white text-lg">@{profile.name}</h4>
-                              {profile.isVerified && (
-                                <span className="text-xs px-2 py-1 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40">
-                                  ✓ VERIFICADO
-                                </span>
-                              )}
                             </div>
                             <p className="text-gray-300 text-sm mb-2">{profile.fullName}</p>
                             <div className={`rounded-full px-3 py-1 inline-block ${
                               profile.type === 'verified' 
-                                ? 'bg-purple-500/20 border border-purple-500/30' 
+                                ? 'bg-blue-500/20 border border-blue-500/30' 
                                 : 'bg-red-500/20 border border-red-500/30'
                             }`}>
                               <span className={`font-semibold text-sm ${
-                                profile.type === 'verified' ? 'text-purple-400' : 'text-red-400'
+                                profile.type === 'verified' ? 'text-blue-400' : 'text-red-400'
                               }`}>NÃO SEGUE</span>
                             </div>
                           </div>
@@ -486,6 +482,7 @@ const Results = () => {
                           src={profile.avatar}
                           alt={profile.name}
                           className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
+                          style={{ marginTop: '-1px' }}
                         />
                         <div className="flex-1">
                           <div>
@@ -524,7 +521,7 @@ const Results = () => {
                     size="sm"
                     className="text-white hover:bg-white/10 disabled:opacity-50"
                   >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    <ChevronLeft className="w-5 h-5 mr-2" />
                     Anterior
                   </Button>
                   
@@ -612,7 +609,7 @@ const Results = () => {
                     className="text-white hover:bg-white/10 disabled:opacity-50"
                   >
                     Próxima
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
               </div>
