@@ -1012,7 +1012,8 @@ def get_payment_type_name(type_enum: int) -> str:
 # As funções get_perfect_pay_sales e verify_subscription_with_perfect_pay foram removidas
 # pois agora confiamos 100% nos dados recebidos via webhook da PerfectPay
 
-async def get_perfect_pay_sales(username: str = None, transaction_token: str = None, customer_email: str = None, customer_cpf: str = None) -> Dict[str, Any]:
+# Função get_perfect_pay_sales removida - usando apenas dados locais do webhook
+# async def get_perfect_pay_sales(username: str = None, transaction_token: str = None, customer_email: str = None, customer_cpf: str = None) -> Dict[str, Any]:
     """
     Busca vendas na API da Perfect Pay usando múltiplas estratégias de identificação
     """
