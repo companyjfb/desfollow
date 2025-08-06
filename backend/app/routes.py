@@ -665,19 +665,57 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
         
         if subscription:
-            # Atualizar assinatura existente
+            # Atualizar assinatura existente COMPLETAMENTE
+            print(f"📝 Atualizando assinatura existente para {username}")
+            print(f"📊 Status anterior: {subscription.subscription_status}")
+            print(f"📊 Novo status do webhook: {webhook_data.sale_status_enum} ({webhook_data.sale_status_enum_key})")
+            
+            # Atualizar todos os campos com dados novos
+            subscription.perfect_pay_code = webhook_data.code
+            subscription.perfect_pay_customer_email = webhook_data.customer.get('email')
+            subscription.perfect_pay_customer_name = webhook_data.customer.get('full_name')
+            subscription.perfect_pay_customer_cpf = webhook_data.customer.get('identification_number')
+            subscription.monthly_amount = webhook_data.sale_amount
             subscription.last_sale_status = webhook_data.sale_status_enum
             subscription.webhook_data = webhook_data.dict()
             subscription.updated_at = datetime.utcnow()
             
-            # Se pagamento foi aprovado/completado, estender assinatura
+            # FORÇAR STATUS BASEADO NO WEBHOOK
             if webhook_data.sale_status_enum in [2, 10]:  # approved ou completed
-                subscription.extend_subscription(months=1)
                 subscription.subscription_status = "active"
-                print(f"📅 Assinatura estendida por 1 mês para {username}")
-                print(f"📅 Nova data de expiração: {subscription.current_period_end}")
-            
-            print(f"📝 Atualizando assinatura existente para {username}")
+                subscription.current_period_start = datetime.utcnow()
+                subscription.last_payment_date = datetime.utcnow()
+                subscription.total_payments_received = (subscription.total_payments_received or 0) + 1
+                
+                # Calcular nova data de expiração
+                from dateutil.relativedelta import relativedelta
+                
+                # Se há dados de assinatura da PerfectPay, usar a data EXATA
+                if webhook_data.subscription and webhook_data.subscription.get('next_charge_date'):
+                    from dateutil.parser import parse
+                    try:
+                        next_charge = parse(webhook_data.subscription['next_charge_date'])
+                        subscription.next_billing_date = next_charge
+                        subscription.current_period_end = next_charge
+                        print(f"📅 Data EXATA da PerfectPay: {next_charge}")
+                    except Exception as e:
+                        print(f"⚠️ Erro ao parse da data ({e}), calculando 1 mês")
+                        subscription.current_period_end = datetime.utcnow() + relativedelta(months=1)
+                        subscription.next_billing_date = subscription.current_period_end
+                else:
+                    # Fallback: adicionar 1 mês
+                    subscription.current_period_end = datetime.utcnow() + relativedelta(months=1)
+                    subscription.next_billing_date = subscription.current_period_end
+                
+                print(f"✅ Assinatura ATIVADA para {username}")
+                print(f"📅 Válida até: {subscription.current_period_end}")
+                print(f"💳 Total de pagamentos: {subscription.total_payments_received}")
+            elif webhook_data.sale_status_enum in [5, 6]:  # rejected ou cancelled
+                subscription.subscription_status = "cancelled"
+                print(f"❌ Assinatura CANCELADA para {username}")
+            else:
+                subscription.subscription_status = "pending"
+                print(f"⏳ Assinatura em PENDÊNCIA para {username}")
         else:
             # Criar nova assinatura
             from dateutil.relativedelta import relativedelta
