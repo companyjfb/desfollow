@@ -127,3 +127,15 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Centralização de imagens de perfil */
+@layer utilities {
+  .profile-image-centered {
+    margin-top: -1px;
+  }
+  
+  /* Aplica automaticamente para todas as imagens em cards de perfil */
+  .rounded-full {
+    margin-top: -1px;
+  }
+}

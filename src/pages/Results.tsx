@@ -408,7 +408,6 @@ const Results = () => {
                               className={`w-14 h-14 rounded-full object-cover border-2 shadow-lg ${
                                 profile.type === 'verified' ? 'border-blue-400/50' : 'border-red-400/50'
                               }`}
-                              style={{ marginTop: '-1px' }}
                             />
                             <div className={`absolute -bottom-1 -right-1 rounded-full p-1 ${
                               profile.type === 'verified' ? 'bg-blue-500' : 'bg-red-500'
@@ -482,7 +481,6 @@ const Results = () => {
                           src={profile.avatar}
                           alt={profile.name}
                           className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
-                          style={{ marginTop: '-1px' }}
                         />
                         <div className="flex-1">
                           <div>
