@@ -831,55 +831,12 @@ async def check_subscription_status(username: str, db: Session = Depends(get_db)
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
         
         if not subscription:
-            # Se não encontrou local, tentar buscar diretamente na Perfect Pay
-            if verify_with_api:
-                print(f"🔍 Usuário {username} não encontrado localmente. Buscando na Perfect Pay...")
-                # Buscar apenas por username nos metadados (sem email/cpf)
-                sales_data = await get_perfect_pay_sales(username=username)
-                sales = sales_data.get("sales", {}).get("data", [])
-                
-                if sales:
-                    print(f"💡 Encontradas {len(sales)} vendas na Perfect Pay para {username}")
-                    # Analisar venda mais recente
-                    latest_sale = max(sales, key=lambda x: x.get("date_created", ""))
-                    sale_status = latest_sale.get("sale_status_enum", latest_sale.get("sale_status"))
-                    
-                    # Só criar assinatura se status for ativo (2=approved, 10=completed)
-                    if sale_status in [2, 10, "approved", "completed"]:
-                        print(f"🆕 Criando assinatura local baseada na Perfect Pay para {username}")
-                        
-                        # Extrair dados do cliente da venda
-                        customer_data = latest_sale.get("customer", {})
-                        
-                        from dateutil.relativedelta import relativedelta
-                        subscription = Subscription(
-                            username=username,
-                            perfect_pay_code=latest_sale.get("code"),  # Usar 'code' ao invés de 'transaction_token'
-                            perfect_pay_customer_email=customer_data.get("email"),
-                            perfect_pay_customer_name=customer_data.get("full_name"),
-                            perfect_pay_customer_cpf=customer_data.get("identification_number"),
-                            subscription_status="active",
-                            monthly_amount=float(latest_sale.get("sale_amount", 29.0)),
-                            current_period_start=datetime.now(),
-                            current_period_end=datetime.now() + relativedelta(months=1),
-                            last_sale_status=sale_status if isinstance(sale_status, int) else 2,
-                            total_payments_received=1
-                        )
-                        db.add(subscription)
-                        db.commit()
-                        print(f"✅ Assinatura criada localmente para {username}")
-                        print(f"   Email: {customer_data.get('email', 'N/A')}")
-                        print(f"   Nome: {customer_data.get('full_name', 'N/A')}")
-                    else:
-                        print(f"❌ Venda encontrada mas status inativo: {sale_status}")
-            
-            if not subscription:
-                return JSONResponse({
-                    "has_active_subscription": False,
-                    "username": username,
-                    "message": "Usuário não encontrado na base de assinaturas",
-                    "verification_method": "local_and_api" if verify_with_api else "local_only"
-                })
+            return JSONResponse({
+                "has_active_subscription": False,
+                "username": username,
+                "message": "Usuário não encontrado na base de assinaturas",
+                "verification_method": "local_only"
+            })
         
         # 2. Verificação local básica
         is_active_local = subscription.is_active()
