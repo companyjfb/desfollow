@@ -778,6 +778,42 @@ async def perfect_pay_webhook(webhook_data: PerfectPayWebhookData, db: Session =
             print(f"📋 Status do pagamento: {webhook_data.sale_status_enum} para {username}")
         
         return JSONResponse({"status": "success", "message": "Webhook de assinatura processado com sucesso"})
+
+@router.post("/subscription/force-active/{username}")
+async def force_subscription_active(username: str, db: Session = Depends(get_db)):
+    """Força uma assinatura para ativa - usar apenas para debug"""
+    try:
+        subscription = db.query(Subscription).filter(Subscription.username == username).first()
+        
+        if not subscription:
+            raise HTTPException(status_code=404, detail="Assinatura não encontrada")
+        
+        # Forçar status ativo
+        subscription.subscription_status = "active"
+        subscription.last_sale_status = 2  # approved
+        
+        # Garantir datas válidas se necessário
+        if not subscription.current_period_end:
+            from dateutil.relativedelta import relativedelta
+            subscription.current_period_end = datetime.utcnow() + relativedelta(months=1)
+            subscription.next_billing_date = subscription.current_period_end
+        
+        subscription.updated_at = datetime.utcnow()
+        db.commit()
+        
+        print(f"🔧 Status FORÇADO para ativo para {username}")
+        
+        return JSONResponse({
+            "success": True,
+            "username": username,
+            "new_status": "active",
+            "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            "message": "Status forçado para ativo com sucesso"
+        })
+        
+    except Exception as e:
+        print(f"❌ Erro ao forçar status: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
         
     except Exception as e:
         print(f"❌ Erro ao processar webhook Perfect Pay: {e}")
@@ -859,14 +895,21 @@ async def check_subscription_status(username: str, verify_with_api: bool = True,
             is_active_perfect_pay = await verify_subscription_with_perfect_pay(username, subscription)
             verification_method = "local_and_api"
             
-            # Se Perfect Pay disse que não está ativo, atualizar banco local
+            # COMENTADO: não deixar Perfect Pay cancelar assinatura se pagamento local foi aprovado
+            # if not is_active_perfect_pay and subscription.subscription_status == "active":
+            #     subscription.subscription_status = "cancelled"
+            #     db.commit()
+            #     print(f"🔄 Status local atualizado para cancelado baseado na Perfect Pay")
             if not is_active_perfect_pay and subscription.subscription_status == "active":
-                subscription.subscription_status = "cancelled"
-                db.commit()
-                print(f"🔄 Status local atualizado para cancelado baseado na Perfect Pay")
+                print(f"⚠️ Perfect Pay retornou inativo, mas mantendo ativo localmente pois pagamento foi aprovado")
         
-        # 4. Decisão final: deve estar ativo localmente E na Perfect Pay
-        final_status = is_active_local and is_payment_current and is_active_perfect_pay
+        # 4. Decisão final: PRIORIZAR status local se pagamento está current
+        # Se o pagamento foi aprovado localmente, não deixar a API externa cancelar
+        if is_payment_current and is_active_local:
+            final_status = True
+            print(f"🔒 FORÇANDO STATUS ATIVO - pagamento aprovado localmente")
+        else:
+            final_status = is_active_local and is_payment_current and is_active_perfect_pay
         
         print(f"📊 Verificação final para {username}:")
         print(f"   Local ativo: {is_active_local}")
