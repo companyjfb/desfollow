@@ -814,12 +814,6 @@ async def force_subscription_active(username: str, db: Session = Depends(get_db)
     except Exception as e:
         print(f"❌ Erro ao forçar status: {e}")
         raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
-        
-    except Exception as e:
-        print(f"❌ Erro ao processar webhook Perfect Pay: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao processar webhook: {str(e)}")
 
 @router.get("/subscription/check/{username}")
 async def check_subscription_status(username: str, verify_with_api: bool = True, db: Session = Depends(get_db)):
