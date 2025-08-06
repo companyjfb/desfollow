@@ -884,99 +884,43 @@ async def check_payment_status_legacy(username: str, db: Session = Depends(get_d
     """
     LEGACY: Redireciona para verificação de assinatura
     """
-    return await check_subscription_status(username, True, db)
+    return await check_subscription_status(username, db)
 
 @router.post("/subscription/sync/{username}")
 async def force_sync_with_perfect_pay(username: str, db: Session = Depends(get_db)):
     """
-    Força sincronização com Perfect Pay para corrigir inconsistências
+    Mostra status da assinatura local (sincronização via webhook apenas)
     """
     try:
-        print(f"🔄 Iniciando sincronização forçada para {username}")
+        print(f"📊 Verificando status local da assinatura para {username}")
         
-        # Buscar assinatura local para obter dados do cliente
+        # Buscar assinatura local
         subscription = db.query(Subscription).filter(Subscription.username == username).first()
         
-        # Buscar vendas na Perfect Pay usando dados disponíveis
-        if subscription and (subscription.perfect_pay_customer_email or subscription.perfect_pay_customer_cpf):
-            print(f"🔍 Buscando por dados do cliente: {subscription.perfect_pay_customer_email}")
-            sales_data = await get_perfect_pay_sales(
-                username=username,
-                customer_email=subscription.perfect_pay_customer_email,
-                customer_cpf=subscription.perfect_pay_customer_cpf
-            )
-        else:
-            print(f"🔍 Buscando apenas por username nos metadados")
-            sales_data = await get_perfect_pay_sales(username=username)
-        
-        sales = sales_data.get("sales", {}).get("data", [])
-        
-        if not sales:
+        if not subscription:
             return JSONResponse({
                 "success": False,
-                "message": f"Nenhuma venda encontrada na Perfect Pay para {username}",
-                "sales_found": 0,
-                "search_criteria": {
-                    "username": username,
-                    "email": subscription.perfect_pay_customer_email if subscription else None,
-                    "cpf": subscription.perfect_pay_customer_cpf if subscription else None
-                }
+                "message": f"Nenhuma assinatura encontrada localmente para {username}",
+                "note": "As assinaturas são criadas automaticamente via webhook da Perfect Pay"
             })
-        
-        # Analisar venda mais recente
-        latest_sale = max(sales, key=lambda x: x.get("date_created", ""))
-        sale_status = latest_sale.get("sale_status_enum", latest_sale.get("sale_status"))
-        customer_data = latest_sale.get("customer", {})
-        
-        print(f"📊 Venda mais recente: {latest_sale.get('code')} - Status: {sale_status}")
-        
-        if not subscription:
-            # Criar nova assinatura com dados completos do cliente
-            from dateutil.relativedelta import relativedelta
-            subscription = Subscription(
-                username=username,
-                perfect_pay_code=latest_sale.get("code"),
-                perfect_pay_customer_email=customer_data.get("email"),
-                perfect_pay_customer_name=customer_data.get("full_name"),
-                perfect_pay_customer_cpf=customer_data.get("identification_number"),
-                subscription_status="active" if sale_status in [2, 10, "approved", "completed"] else "cancelled",
-                monthly_amount=float(latest_sale.get("sale_amount", 29.0)),
-                current_period_start=datetime.now() if sale_status in [2, 10, "approved", "completed"] else None,
-                current_period_end=datetime.now() + relativedelta(months=1) if sale_status in [2, 10, "approved", "completed"] else None,
-                last_sale_status=sale_status if isinstance(sale_status, int) else (2 if sale_status == "approved" else 10 if sale_status == "completed" else 6),
-                total_payments_received=len([s for s in sales if s.get("sale_status_enum", s.get("sale_status")) in [2, 10, "approved", "completed"]])
-            )
-            db.add(subscription)
-            action = "created"
-        else:
-            # Atualizar assinatura existente com dados mais recentes
-            subscription.perfect_pay_code = latest_sale.get("code")
-            subscription.perfect_pay_customer_email = customer_data.get("email") or subscription.perfect_pay_customer_email
-            subscription.perfect_pay_customer_name = customer_data.get("full_name") or subscription.perfect_pay_customer_name
-            subscription.perfect_pay_customer_cpf = customer_data.get("identification_number") or subscription.perfect_pay_customer_cpf
-            subscription.subscription_status = "active" if sale_status in [2, 10, "approved", "completed"] else "cancelled"
-            subscription.last_sale_status = sale_status if isinstance(sale_status, int) else (2 if sale_status == "approved" else 10 if sale_status == "completed" else 6)
-            subscription.total_payments_received = len([s for s in sales if s.get("sale_status_enum", s.get("sale_status")) in [2, 10, "approved", "completed"]])
-            action = "updated"
-        
-        db.commit()
-        
-        print(f"✅ Sincronização completa para {username}: {action}")
         
         return JSONResponse({
             "success": True,
-            "message": f"Sincronização completa - assinatura {action}",
+            "message": "Status da assinatura obtido dos dados locais",
             "username": username,
-            "sales_found": len(sales),
-            "latest_sale_status": sale_status,
             "subscription_status": subscription.subscription_status,
-            "action": action
+            "perfect_pay_code": subscription.perfect_pay_code,
+            "customer_email": subscription.perfect_pay_customer_email,
+            "monthly_amount": subscription.monthly_amount,
+            "last_sale_status": subscription.last_sale_status,
+            "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            "total_payments_received": subscription.total_payments_received,
+            "note": "Dados sincronizados automaticamente via webhook"
         })
         
     except Exception as e:
-        print(f"❌ Erro na sincronização forçada: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro na sincronização: {str(e)}")
+        print(f"❌ Erro ao verificar status: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao verificar status: {str(e)}")
 
 def get_payment_method_name(method_enum: int) -> str:
     """Converte enum de método de pagamento para string"""
@@ -1013,104 +957,5 @@ def get_payment_type_name(type_enum: int) -> str:
 # pois agora confiamos 100% nos dados recebidos via webhook da PerfectPay
 
 # Função get_perfect_pay_sales removida - usando apenas dados locais do webhook
-# async def get_perfect_pay_sales(username: str = None, transaction_token: str = None, customer_email: str = None, customer_cpf: str = None) -> Dict[str, Any]:
-    """
-    Busca vendas na API da Perfect Pay usando múltiplas estratégias de identificação
-    """
-    try:
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {PERFECT_PAY_ACCESS_TOKEN}"
-        }
-        
-        # Buscar vendas dos últimos 90 dias para dar mais margem
-        from datetime import datetime, timedelta
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=90)
-        
-        payload = {
-            "start_date_sale": start_date.strftime("%Y-%m-%d"),
-            "end_date_sale": end_date.strftime("%Y-%m-%d"),
-            "sale_status": [2, 10]  # approved e completed
-        }
-        
-        # Se temos transaction_token específico, usar ele
-        if transaction_token:
-            payload["transaction_token"] = transaction_token
-            print(f"🔍 Buscando por transaction_token: {transaction_token}")
-        
-        print(f"🔍 Consultando Perfect Pay API...")
-        print(f"📅 Período: {start_date.strftime('%Y-%m-%d')} a {end_date.strftime('%Y-%m-%d')}")
-        
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                "https://app.perfectpay.com.br/api/v1/sales/get",
-                headers=headers,
-                json=payload
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                total_sales = data.get('sales', {}).get('total_items', 0)
-                print(f"✅ Perfect Pay API - {total_sales} vendas encontradas")
-                
-                # Se temos filtros para aplicar
-                if username or customer_email or customer_cpf:
-                    filtered_sales = []
-                    
-                    for sale in data.get("sales", {}).get("data", []):
-                        match_found = False
-                        customer_data = sale.get("customer", {})
-                        metadata = sale.get("metadata", {})
-                        
-                        # ESTRATÉGIA 1: Buscar por dados do cliente (MAIS CONFIÁVEL)
-                        if customer_email and customer_data.get("email"):
-                            if customer_data["email"].lower() == customer_email.lower():
-                                print(f"✅ Match por email: {customer_email}")
-                                match_found = True
-                        
-                        if customer_cpf and customer_data.get("identification_number"):
-                            # Limpar formatação para comparar
-                            cpf_clean = customer_cpf.replace(".", "").replace("-", "").replace("/", "")
-                            cpf_sale_clean = customer_data["identification_number"].replace(".", "").replace("-", "").replace("/", "")
-                            if cpf_clean == cpf_sale_clean:
-                                print(f"✅ Match por CPF: {customer_cpf}")
-                                match_found = True
-                        
-                        # ESTRATÉGIA 2: Buscar por username nos metadados (BACKUP)
-                        if username and not match_found:
-                            sale_username = (
-                                metadata.get("username") or
-                                metadata.get("utm_perfect") or
-                                metadata.get("utm_content") or
-                                (metadata.get("src", "").replace("user_", "") if metadata.get("src", "").startswith("user_") else None)
-                            )
-                            
-                            if sale_username == username:
-                                print(f"✅ Match por username nos metadados: {username}")
-                                match_found = True
-                        
-                        # ESTRATÉGIA 3: Extrair @ do email para comparar com username
-                        if username and not match_found and customer_data.get("email"):
-                            email_username = customer_data["email"].split("@")[0]
-                            if email_username.lower() == username.lower():
-                                print(f"✅ Match por @ do email: {email_username} = {username}")
-                                match_found = True
-                        
-                        if match_found:
-                            filtered_sales.append(sale)
-                    
-                    print(f"🎯 Vendas filtradas: {len(filtered_sales)} de {total_sales}")
-                    return {"sales": {"data": filtered_sales, "total_items": len(filtered_sales)}}
-                
-                return data
-            else:
-                print(f"❌ Erro na Perfect Pay API: {response.status_code} - {response.text}")
-                return {"sales": {"data": [], "total_items": 0}}
-                
-    except Exception as e:
-        print(f"❌ Erro ao consultar Perfect Pay API: {e}")
-        return {"sales": {"data": [], "total_items": 0}}
 
 # Função verify_subscription_with_perfect_pay removida - usando apenas dados locais do webhook 
