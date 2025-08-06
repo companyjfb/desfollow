@@ -5,6 +5,7 @@ import { ArrowLeft, Crown, Lock, Zap, Users, TrendingDown, AlertTriangle, Shield
 import InstagramImage from '@/components/InstagramImage';
 import { StatusResponse } from '../utils/ghosts';
 import { useScanCache } from '../hooks/use-scan-cache';
+import { useUrlParams } from '../hooks/use-url-params';
 
 interface GhostUser {
   username: string;
@@ -68,6 +69,7 @@ const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getCachedOrFetchScan } = useScanCache();
+  const { buildUrlWithParams, buildQueryString, debugParams, preservedParams } = useUrlParams();
   
   const [scanData, setScanData] = useState<ScanData | null>(location.state?.scanData || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +132,9 @@ const Results = () => {
             setFromCache(true);
           } else {
             console.log('📭 Nenhum dado encontrado. Redirecionando para nova análise...');
-            navigate(`/analyzing/${username}`);
+            const analyzingUrl = buildUrlWithParams(`/analyzing/${username}`);
+            console.log('🔗 Redirecionando para ANÁLISE com parâmetros preservados:', analyzingUrl);
+            navigate(analyzingUrl);
           }
         } catch (error) {
           console.error('❌ Erro ao carregar dados:', error);
@@ -631,45 +635,50 @@ const Results = () => {
               <div className="space-y-6">
                 <Button
                   onClick={() => {
-                    // Estratégia múltipla para preservar username E parâmetros UTM originais
+                    // NOVA ESTRATÉGIA: Usar hook para preservar TODOS os parâmetros
                     const baseUrl = 'https://go.perfectpay.com.br/PPU38CPTTI1';
-                    const params = new URLSearchParams();
                     
-                    // Preservar parâmetros UTM originais da URL atual
-                    const currentUrl = new URLSearchParams(location.search);
-                    const originalUtms = {
-                      utm_source: currentUrl.get('utm_source'),
-                      utm_medium: currentUrl.get('utm_medium'), 
-                      utm_campaign: currentUrl.get('utm_campaign'),
-                      utm_content: currentUrl.get('utm_content'),
-                      utm_term: currentUrl.get('utm_term'),
-                      src: currentUrl.get('src'),
+                    // Debug dos parâmetros atuais
+                    debugParams();
+                    
+                    // Construir query string GARANTINDO username + backup + preservados
+                    const additionalParams = {
+                      // 1. GARANTIR SEMPRE: Parâmetro dedicado username
+                      username: username || '',
+                      
+                      // 2. GARANTIR SEMPRE: UTM personalizado como backup
+                      utm_perfect: username || '',
+                      
+                      // 3. GARANTIR SEMPRE: SRC como backup adicional  
+                      src: `user_${username || 'unknown'}`,
+                      
+                      // 4. UTMs padrão do Desfollow (sempre enviar, podem sobrescrever)
+                      utm_source: preservedParams.utm_source || 'desfollow',
+                      utm_campaign: preservedParams.utm_campaign || 'subscription', 
+                      utm_medium: preservedParams.utm_medium || 'webapp',
+                      
+                      // 5. UTM content como backup extra (preservar se existir)
+                      utm_content: preservedParams.utm_content || username || '',
+                      
+                      // 6. URL de redirecionamento com parâmetros preservados
+                      redirect_url: `https://desfollow.com.br${buildUrlWithParams(`/results/${username}`, { payment: 'success' })}`,
                     };
                     
-                    // 1. PRIORIDADE: Parâmetro dedicado username
-                    params.set('username', username || '');
+                    const checkoutParams = buildQueryString(additionalParams);
                     
-                    // 2. UTM personalizado como backup
-                    params.set('utm_perfect', username || '');
+                    const checkoutUrl = `${baseUrl}?${checkoutParams}`;
                     
-                    // 3. Preservar UTMs originais se existirem
-                    Object.entries(originalUtms).forEach(([key, value]) => {
-                      if (value) params.set(key, value);
-                    });
+                    // LOGS DETALHADOS PARA GARANTIR QUE TUDO ESTÁ CORRETO
+                    console.log('🎯 USERNAME GARANTIDO:', username);
+                    console.log('🎯 PARÂMETROS OBRIGATÓRIOS:');
+                    console.log('   - username:', additionalParams.username);
+                    console.log('   - utm_perfect:', additionalParams.utm_perfect);
+                    console.log('   - src:', additionalParams.src);
+                    console.log('   - utm_content:', additionalParams.utm_content);
+                    console.log('🎯 PARÂMETROS PRESERVADOS:', preservedParams);
+                    console.log('🎯 PARÂMETROS FINAIS:', additionalParams);
+                    console.log('🔗 URL COMPLETA DO CHECKOUT:', checkoutUrl);
                     
-                    // 4. UTMs padrão do Desfollow (não sobrescrever se já existir)
-                    if (!params.has('utm_source')) params.set('utm_source', 'desfollow');
-                    if (!params.has('utm_campaign')) params.set('utm_campaign', 'subscription');
-                    if (!params.has('utm_medium')) params.set('utm_medium', 'webapp');
-                    
-                    // 5. SRC como backup adicional (não sobrescrever se já existir)
-                    if (!params.has('src')) params.set('src', `user_${username || 'unknown'}`);
-                    
-                    // 6. Configurar redirecionamento pós-pagamento
-                    params.set('redirect_url', `https://desfollow.com.br/results/${username}?payment=success`);
-                    
-                    const checkoutUrl = `${baseUrl}?${params.toString()}`;
-                    console.log('🔗 URL do checkout com UTMs preservados:', checkoutUrl);
                     window.open(checkoutUrl, '_blank');
                   }}
                   className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"

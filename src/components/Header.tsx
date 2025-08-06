@@ -1,25 +1,15 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, Users, Zap } from 'lucide-react';
+import { useUrlParams } from '../hooks/use-url-params';
 
 const Header = () => {
   const [username, setUsername] = useState('');
   const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Capturar e preservar parâmetros UTM da URL atual
-  const urlParams = new URLSearchParams(location.search);
-  const preservedParams = {
-    utm_source: urlParams.get('utm_source'),
-    utm_medium: urlParams.get('utm_medium'),
-    utm_campaign: urlParams.get('utm_campaign'),
-    utm_content: urlParams.get('utm_content'),
-    utm_term: urlParams.get('utm_term'),
-    src: urlParams.get('src'),
-  };
+  const { buildUrlWithParams, debugParams } = useUrlParams();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,18 +17,13 @@ const Header = () => {
       // Remove @ if user typed it
       const cleanUsername = username.replace('@', '');
       
-      // Construir URL preservando parâmetros UTM
-      const params = new URLSearchParams();
-      Object.entries(preservedParams).forEach(([key, value]) => {
-        if (value) params.set(key, value);
-      });
+      // Construir URL preservando TODOS os parâmetros UTM
+      const targetUrl = buildUrlWithParams(`/analyzing/${cleanUsername}`);
       
-      const queryString = params.toString();
-      const targetUrl = queryString 
-        ? `/analyzing/${cleanUsername}?${queryString}`
-        : `/analyzing/${cleanUsername}`;
+      // Debug para verificar parâmetros
+      debugParams();
+      console.log('🔗 Navegando da PÁGINA INICIAL com parâmetros preservados:', targetUrl);
       
-      console.log('🔗 Navegando com parâmetros preservados:', targetUrl);
       navigate(targetUrl);
     }
   };

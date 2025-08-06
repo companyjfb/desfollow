@@ -4,6 +4,7 @@ import { Search, Users, Zap, CheckCircle } from 'lucide-react';
 import { startScan, pollScan } from '../utils/ghosts';
 import { useScanCache } from '../hooks/use-scan-cache';
 import { useToast } from "@/hooks/use-toast";
+import { useUrlParams } from '../hooks/use-url-params';
 
 interface ScanStatus {
   status: 'queued' | 'running' | 'done' | 'error';
@@ -24,6 +25,7 @@ const Analyzing = () => {
   const navigate = useNavigate();
   const { getCachedOrFetchScan, saveScanToCache } = useScanCache();
   const { toast } = useToast();
+  const { buildUrlWithParams, debugParams } = useUrlParams();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,13 @@ const Analyzing = () => {
         
         if (existingScanData) {
           console.log('✅ Dados encontrados! Redirecionando para resultados...');
-          navigate(`/results/${username}`, { 
+          
+          // Preservar parâmetros UTM ao navegar para resultados
+          const resultsUrl = buildUrlWithParams(`/results/${username}`);
+          debugParams();
+          console.log('🔗 Navegando para RESULTADOS com parâmetros preservados:', resultsUrl);
+          
+          navigate(resultsUrl, { 
             state: { 
               scanData: existingScanData,
               username: username,
@@ -161,14 +169,12 @@ const Analyzing = () => {
               
               // Aguarda pelo menos 5 segundos em "Finalizando análise"
               setTimeout(() => {
-                // Preservar parâmetros UTM na navegação para results
-                const urlParams = new URLSearchParams(location.search);
-                const queryString = urlParams.toString();
-                const targetUrl = queryString 
-                  ? `/results/${username}?${queryString}`
-                  : `/results/${username}`;
+                // Preservar TODOS os parâmetros UTM na navegação para results
+                const resultsUrl = buildUrlWithParams(`/results/${username}`);
+                debugParams();
+                console.log('🔗 Navegando para RESULTADOS FINAIS com parâmetros preservados:', resultsUrl);
                 
-                navigate(targetUrl, { 
+                navigate(resultsUrl, { 
                   state: { 
                     scanData: status,
                     username: username 
