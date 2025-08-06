@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Crown, Lock, Zap, Users, TrendingDown, AlertTriangle, Shield, CheckCircle, Star, Target, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Crown, Lock, Zap, Users, TrendingDown, AlertTriangle, Shield, CheckCircle, Star, Target, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import InstagramImage from '@/components/InstagramImage';
 import { StatusResponse } from '../utils/ghosts';
 import { useScanCache } from '../hooks/use-scan-cache';
@@ -44,7 +44,7 @@ interface ScanData {
   profile_info: ProfileInfo;
 }
 
-// Componente de imagem com fallback robusto
+// Componente de imagem com retry automático contínuo
 const RobustImage: React.FC<{
   src: string;
   alt: string;
@@ -57,6 +57,8 @@ const RobustImage: React.FC<{
       alt={alt}
       className={className}
       fallback={fallback}
+      maxRetries={15} // Mais tentativas para imagens importantes
+      retryDelay={1500} // Delay menor para retry mais ágil
     />
   );
 };
@@ -70,9 +72,34 @@ const Results = () => {
   const [scanData, setScanData] = useState<ScanData | null>(location.state?.scanData || null);
   const [isLoading, setIsLoading] = useState(false);
   const [fromCache, setFromCache] = useState(location.state?.fromCache || false);
+  const [isPaidUser, setIsPaidUser] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cardsPerPage] = useState(100);
   
   // ✅ REGRA ESPECIAL: jordanbitencourt vê todos os resultados
   const isSpecialUser = username === 'jordanbitencourt';
+  
+  // Função para verificar status de assinatura
+  const checkSubscriptionStatus = async (targetUsername: string) => {
+    try {
+      setIsCheckingPayment(true);
+      const response = await fetch(`/api/subscription/check/${targetUsername}`);
+      const data = await response.json();
+      
+      console.log('💳 Status da assinatura:', data);
+      console.log(`📅 Assinatura ativa: ${data.has_active_subscription}`);
+      console.log(`📅 Dias restantes: ${data.days_remaining}`);
+      console.log(`📅 Expira em: ${data.current_period_end}`);
+      
+      setIsPaidUser(data.has_active_subscription || false);
+    } catch (error) {
+      console.error('❌ Erro ao verificar assinatura:', error);
+      setIsPaidUser(false);
+    } finally {
+      setIsCheckingPayment(false);
+    }
+  };
   
   // 🔍 DEBUG: Log para verificar dados
   console.log('🔍 DEBUG - Username:', username);
@@ -82,6 +109,13 @@ const Results = () => {
   console.log('🔍 DEBUG - Famous Ghosts:', scanData?.famous_ghosts?.length || 0);
   console.log('🔍 DEBUG - Total Ghosts:', scanData?.count || 0);
   
+  // Verificar assinatura quando carrega a página
+  useEffect(() => {
+    if (username) {
+      checkSubscriptionStatus(username);
+    }
+  }, [username]);
+
   // Buscar dados se não estão disponíveis no state
   useEffect(() => {
     const loadScanData = async () => {
@@ -148,26 +182,33 @@ const Results = () => {
     })));
   }
   
+  // Determinar se usuário tem acesso completo
+  const hasFullAccess = isSpecialUser || isPaidUser;
+  
   // ✅ ORDEM OTIMIZADA: Primeiro reais, depois verificados
-  // Para usuário especial: mostra todos na ordem correta
-  // Para usuário normal: mostra apenas os primeiros 4 na ordem correta
-  const visibleProfiles = isSpecialUser 
-    ? allGhosts.map(user => ({
-        name: user.username,
-        fullName: user.full_name,
-        avatar: user.profile_pic_url || "/placeholder.svg",
-        isPrivate: user.is_private,
-        isVerified: user.is_verified,
-        type: user.type
-      }))
-    : allGhosts.slice(0, 4).map(user => ({
-        name: user.username,
-        fullName: user.full_name,
-        avatar: user.profile_pic_url || "/placeholder.svg",
-        isPrivate: user.is_private,
-        isVerified: user.is_verified,
-        type: user.type
-      }));
+  const allProfiles = allGhosts.map(user => ({
+    name: user.username,
+    fullName: user.full_name,
+    avatar: user.profile_pic_url || "/placeholder.svg",
+    isPrivate: user.is_private,
+    isVerified: user.is_verified,
+    type: user.type
+  }));
+  
+  // Para usuários sem pagamento: mostra apenas 5 primeiros + 10 bloqueados
+  const freeUserProfiles = allProfiles.slice(0, 5);
+  const blockedProfiles = allProfiles.slice(5, 15); // Máximo 10 bloqueados
+  
+  // Calcular paginação
+  const totalProfiles = hasFullAccess ? allProfiles.length : freeUserProfiles.length;
+  const totalPages = Math.ceil(totalProfiles / cardsPerPage);
+  const startIndex = (currentPage - 1) * cardsPerPage;
+  const endIndex = startIndex + cardsPerPage;
+  
+  // Perfis visíveis baseado na paginação
+  const visibleProfiles = hasFullAccess 
+    ? allProfiles.slice(startIndex, endIndex)
+    : freeUserProfiles;
 
   // 🔍 DEBUG: Verificar dados processados
   console.log('🔍 DEBUG - All Ghosts Length:', allGhosts.length);
@@ -407,18 +448,131 @@ const Results = () => {
                     </div>
                   ))}
                 </div>
+                
+                {/* Cards bloqueados para usuários não pagos */}
+                {!hasFullAccess && blockedProfiles.length > 0 && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                      {blockedProfiles.map((profile, index) => (
+                        <div key={`blocked-${index}`} className="relative">
+                          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl opacity-50 pointer-events-none">
+                            <div className="flex items-center space-x-4">
+                              <div className="relative">
+                                <RobustImage
+                                  src={profile.avatar}
+                                  alt={profile.fullName || profile.name}
+                                  className="w-16 h-16 rounded-full border-2 border-white/20 object-cover"
+                                />
+                                {profile.isVerified && (
+                                  <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
+                                    <CheckCircle className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="font-bold text-white mb-1">@{profile.name}</h4>
+                                  <div className="text-red-400 text-sm font-semibold mb-2">NÃO SEGUE</div>
+                                </div>
+                                <div className="flex items-center space-x-3 text-white/70 text-sm">
+                                  <span>??? seguidores</span>
+                                  <span>??? seguindo</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-black/70 backdrop-blur-sm rounded-xl px-4 py-2">
+                              <Lock className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                              <p className="text-yellow-400 text-xs font-semibold">Bloqueado</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {/* Paginação para usuários pagos */}
+                {hasFullAccess && totalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-4 mb-8">
+                    <Button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      variant="ghost"
+                      className="text-white hover:bg-white/10 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="w-5 h-5 mr-2" />
+                      Anterior
+                    </Button>
+                    
+                    <div className="flex items-center space-x-2">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            variant={currentPage === pageNum ? "default" : "ghost"}
+                            className={`w-10 h-10 ${
+                              currentPage === pageNum 
+                                ? "bg-blue-600 text-white" 
+                                : "text-white hover:bg-white/10"
+                            }`}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      {totalPages > 5 && (
+                        <>
+                          <span className="text-white/60">...</span>
+                          <Button
+                            onClick={() => setCurrentPage(totalPages)}
+                            variant={currentPage === totalPages ? "default" : "ghost"}
+                            className={`w-10 h-10 ${
+                              currentPage === totalPages 
+                                ? "bg-blue-600 text-white" 
+                                : "text-white hover:bg-white/10"
+                            }`}
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    
+                    <Button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      variant="ghost"
+                      className="text-white hover:bg-white/10 disabled:opacity-50"
+                    >
+                      Próxima
+                      <ChevronRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </div>
+                )}
+                
                 <div className="text-center mb-8">
                   <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-xl p-4 border border-yellow-500/30">
-                    <p className="text-yellow-400 font-semibold text-sm mb-2">🔒 Conteúdo Bloqueado</p>
-                    <p className="text-white/70 text-xs">Desbloqueie todos os perfis com o plano premium</p>
+                    <p className="text-yellow-400 font-semibold text-sm mb-2">
+                      {hasFullAccess ? 
+                        `📊 Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
+                        "🔒 Conteúdo Bloqueado"
+                      }
+                    </p>
+                    {!hasFullAccess && (
+                      <p className="text-white/70 text-xs">Desbloqueie todos os perfis com o plano premium</p>
+                    )}
                   </div>
                 </div>
               </>
             )}
           </div>
 
-          {/* Upgrade CTA - apenas para usuários normais */}
-          {!isSpecialUser && (
+          {/* Upgrade CTA - apenas para usuários não pagos */}
+          {!hasFullAccess && (
             <div className="bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 text-center shadow-2xl">
               <div className="mb-6">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
@@ -445,7 +599,11 @@ const Results = () => {
 
               <div className="space-y-6">
                 <Button
-                  onClick={scrollToTop}
+                  onClick={() => {
+                    // Redirecionar para Perfect Pay preservando o username nos UTMs
+                    const checkoutUrl = `https://checkout.perfectpay.com.br/pay/PPU38CPTT5E?utm_content=${encodeURIComponent(username || '')}&utm_source=desfollow&utm_campaign=subscription`;
+                    window.open(checkoutUrl, '_blank');
+                  }}
                   className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl border-0"
                 >
                   <Zap className="w-6 h-6 mr-3" />

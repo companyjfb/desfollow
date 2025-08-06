@@ -94,6 +94,109 @@ class Payment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(255), unique=True, index=True, nullable=False)
+    perfect_pay_code = Column(String(255), unique=True, index=True)  # Código da assinatura da Perfect Pay
+    perfect_pay_customer_email = Column(String(255), index=True)
+    perfect_pay_customer_name = Column(String(255))
+    perfect_pay_customer_cpf = Column(String(255))
+    
+    # Dados da assinatura
+    subscription_status = Column(String(50), default="active")  # active, cancelled, expired, suspended
+    monthly_amount = Column(Float, default=29.00)
+    currency = Column(String(3), default="BRL")
+    payment_method = Column(String(50))
+    payment_type = Column(String(50))
+    
+    # Datas importantes para assinaturas mensais
+    subscription_start = Column(DateTime)  # Quando a assinatura começou
+    current_period_start = Column(DateTime)  # Início do período atual
+    current_period_end = Column(DateTime)  # Fim do período atual (quando vence)
+    next_billing_date = Column(DateTime)  # Próxima cobrança
+    last_payment_date = Column(DateTime)  # Último pagamento recebido
+    cancellation_date = Column(DateTime, nullable=True)  # Quando foi cancelada (se aplicável)
+    
+    # Status dos pagamentos Perfect Pay
+    last_sale_status = Column(Integer)  # Último status de venda da Perfect Pay
+    total_payments_received = Column(Integer, default=0)  # Quantos pagamentos mensais foram recebidos
+    
+    # Metadados
+    webhook_data = Column(JSON)  # Dados completos do último webhook
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Métodos utilitários para assinaturas
+    def is_active(self):
+        """Verifica se a assinatura está ativa e dentro do período válido"""
+        if self.subscription_status != "active":
+            return False
+        
+        if not self.current_period_end:
+            return False
+            
+        # Verifica se estamos dentro do período de validade
+        return datetime.utcnow() <= self.current_period_end
+    
+    def is_payment_current(self):
+        """Verifica se o último pagamento foi aprovado/completado"""
+        return self.last_sale_status in [2, 10]  # approved ou completed
+    
+    def days_until_expiry(self):
+        """Retorna quantos dias faltam até expirar"""
+        if not self.current_period_end:
+            return 0
+        
+        delta = self.current_period_end - datetime.utcnow()
+        return max(0, delta.days)
+    
+    def is_expiring_soon(self, days=3):
+        """Verifica se a assinatura expira em breve"""
+        return self.days_until_expiry() <= days
+    
+    def extend_subscription(self, months=1):
+        """Estende a assinatura por N meses"""
+        from dateutil.relativedelta import relativedelta
+        
+        if not self.current_period_end:
+            self.current_period_end = datetime.utcnow()
+        
+        # Estende o período atual
+        new_end = self.current_period_end + relativedelta(months=months)
+        self.current_period_end = new_end
+        self.next_billing_date = new_end
+        
+        # Atualiza início do período se necessário
+        if not self.current_period_start:
+            self.current_period_start = datetime.utcnow()
+        
+        # Incrementa contador de pagamentos
+        self.total_payments_received += 1
+        self.last_payment_date = datetime.utcnow()
+
+# Manter a classe antiga para compatibilidade, mas marcar como deprecated
+class PaidUser(Base):
+    __tablename__ = "paid_users_legacy"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(255), unique=True, index=True, nullable=False)
+    perfect_pay_code = Column(String(255), unique=True, index=True)
+    perfect_pay_customer_email = Column(String(255), index=True)
+    perfect_pay_customer_name = Column(String(255))
+    perfect_pay_customer_cpf = Column(String(255))
+    sale_amount = Column(Float)
+    currency = Column(String(3), default="BRL")
+    payment_method = Column(String(50))
+    payment_type = Column(String(50))
+    sale_status = Column(Integer)
+    date_created = Column(DateTime)
+    date_approved = Column(DateTime)
+    webhook_data = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 # Configuração do banco
 DATABASE_URL = os.getenv("DATABASE_URL")
 

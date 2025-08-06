@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getInstagramImageUrl } from '../utils/instagram-image-url';
 
 interface InstagramImageProps {
@@ -6,45 +6,83 @@ interface InstagramImageProps {
   alt: string;
   className?: string;
   fallback?: string;
+  maxRetries?: number;
+  retryDelay?: number;
 }
 
 const InstagramImage: React.FC<InstagramImageProps> = ({ 
   src, 
   alt, 
   className, 
-  fallback = '/placeholder.svg' 
+  fallback = '/placeholder.svg',
+  maxRetries = 10,
+  retryDelay = 2000 
 }) => {
   const [imgSrc, setImgSrc] = useState<string>('');
-  const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Reset retry counter quando a URL src mudar
+    setRetryCount(0);
+    
     // Usar API de proxy diretamente para imagens Instagram
     const processedUrl = getInstagramImageUrl(src);
     console.log('🔄 Processando imagem:', { original: src, processed: processedUrl });
     
     setImgSrc(processedUrl);
-    setHasError(false);
     setIsLoading(true);
+    
+    // Limpar timeout anterior se existir
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
   }, [src]);
 
+  // Limpar timeout quando componente desmonta
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleError = () => {
-    if (!hasError) {
-      setHasError(true);
-      console.log('❌ Erro ao carregar imagem via API:', imgSrc);
+    console.log(`❌ Erro ao carregar imagem (tentativa ${retryCount + 1}/${maxRetries}):`, imgSrc);
+    
+    if (retryCount < maxRetries) {
+      // Incrementar contador de retry
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
       
-      // Se a API falhou, usa o fallback diretamente
-      setImgSrc(fallback);
+      // Aguardar um pouco antes de tentar novamente
+      retryTimeoutRef.current = setTimeout(() => {
+        console.log(`🔄 Tentativa ${newRetryCount}/${maxRetries} - Recarregando imagem:`, imgSrc);
+        
+        // Força o reload da imagem adicionando um timestamp
+        const processedUrl = getInstagramImageUrl(src);
+        const urlWithTimestamp = `${processedUrl}&retry=${newRetryCount}&t=${Date.now()}`;
+        setImgSrc(urlWithTimestamp);
+      }, retryDelay);
     } else {
-      // Se já tentou e falhou, usa o fallback
-      console.log('❌ Usando fallback após falha');
-      setImgSrc(fallback);
+      console.log(`❌ Máximo de tentativas (${maxRetries}) excedido. Parando tentativas.`);
+      setIsLoading(false); // Para o loading após esgotar tentativas
     }
   };
 
   const handleLoad = () => {
     setIsLoading(false);
-    console.log('✅ Imagem carregada com sucesso:', imgSrc);
+    console.log(`✅ Imagem carregada com sucesso (após ${retryCount} tentativas):`, imgSrc);
+    
+    // Reset retry counter quando imagem carrega com sucesso
+    setRetryCount(0);
+    
+    // Limpar timeout se imagem carregou
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
   };
 
   return (
