@@ -6,8 +6,11 @@ echo "🖼️ Copiando todas as imagens e favicon para o servidor..."
 sudo mkdir -p /var/www/desfollow/lovable-uploads
 sudo mkdir -p /var/www/desfollow/assets
 
-# Baixar todas as imagens do lovable-uploads da Hostinger para o servidor
-echo "📥 Baixando todas as imagens da Hostinger para o servidor..."
+# URL base do GitHub Raw para as imagens
+GITHUB_BASE_URL="https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/lovable-uploads"
+
+# Baixar todas as imagens do GitHub para o servidor
+echo "📥 Baixando todas as imagens do GitHub para o servidor..."
 
 # Lista de TODAS as imagens encontradas no dist local
 IMAGES=(
@@ -35,40 +38,50 @@ IMAGES=(
     "f7070929-4370-4211-b4f1-2d25ab32b73a.png"
 )
 
-# Baixar imagens da Hostinger para o servidor
+# Baixar imagens do GitHub para o servidor
 for img in "${IMAGES[@]}"; do
-    echo "📥 Baixando $img da Hostinger..."
-    sudo wget -q -O "/var/www/desfollow/lovable-uploads/$img" "http://www.desfollow.com.br/lovable-uploads/$img"
+    echo "📥 Baixando $img do GitHub..."
+    sudo wget -q -O "/var/www/desfollow/lovable-uploads/$img" "$GITHUB_BASE_URL/$img"
     if [ $? -eq 0 ]; then
         echo "✅ $img baixado com sucesso"
     else
-        echo "⚠️ Erro ao baixar $img"
+        echo "⚠️ Erro ao baixar $img - tentando novamente..."
+        # Tentativa com curl se wget falhar
+        sudo curl -s -L -o "/var/www/desfollow/lovable-uploads/$img" "$GITHUB_BASE_URL/$img"
+        if [ $? -eq 0 ]; then
+            echo "✅ $img baixado com sucesso (curl)"
+        else
+            echo "❌ Falha ao baixar $img"
+        fi
     fi
 done
 
-# Baixar favicon e outros arquivos importantes da Hostinger
-echo "📥 Baixando favicon.ico..."
-sudo wget -q -O "/var/www/desfollow/favicon.ico" "http://www.desfollow.com.br/favicon.ico"
+# Baixar favicon e outros arquivos importantes do GitHub
+echo "📥 Baixando favicon.ico do GitHub..."
+sudo wget -q -O "/var/www/desfollow/favicon.ico" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/favicon.ico"
 if [ $? -eq 0 ]; then
     echo "✅ favicon.ico baixado com sucesso"
 else
-    echo "⚠️ Erro ao baixar favicon.ico"
+    echo "⚠️ Erro ao baixar favicon.ico - tentando com curl..."
+    sudo curl -s -L -o "/var/www/desfollow/favicon.ico" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/favicon.ico"
 fi
 
-echo "📥 Baixando placeholder.svg..."
-sudo wget -q -O "/var/www/desfollow/placeholder.svg" "http://www.desfollow.com.br/placeholder.svg"
+echo "📥 Baixando placeholder.svg do GitHub..."
+sudo wget -q -O "/var/www/desfollow/placeholder.svg" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/placeholder.svg"
 if [ $? -eq 0 ]; then
     echo "✅ placeholder.svg baixado com sucesso"
 else
-    echo "⚠️ Erro ao baixar placeholder.svg"
+    echo "⚠️ Erro ao baixar placeholder.svg - tentando com curl..."
+    sudo curl -s -L -o "/var/www/desfollow/placeholder.svg" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/placeholder.svg"
 fi
 
-echo "📥 Baixando robots.txt..."
-sudo wget -q -O "/var/www/desfollow/robots.txt" "http://www.desfollow.com.br/robots.txt"
+echo "📥 Baixando robots.txt do GitHub..."
+sudo wget -q -O "/var/www/desfollow/robots.txt" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/robots.txt"
 if [ $? -eq 0 ]; then
     echo "✅ robots.txt baixado com sucesso"
 else
-    echo "⚠️ Erro ao baixar robots.txt"
+    echo "⚠️ Erro ao baixar robots.txt - tentando com curl..."
+    sudo curl -s -L -o "/var/www/desfollow/robots.txt" "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/robots.txt"
 fi
 
 # Copiar assets compilados (CSS e JS)
@@ -99,4 +112,12 @@ echo "🧪 Testando imagens via HTTPS..."
 curl -I https://www.desfollow.com.br/lovable-uploads/b7dde072-9f5b-476f-80ea-ff351b4129bd.png | head -2
 curl -I https://www.desfollow.com.br/favicon.ico | head -2
 
+echo ""
+echo "🧪 Testando fontes GitHub Raw..."
+curl -I "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/lovable-uploads/b7dde072-9f5b-476f-80ea-ff351b4129bd.png" | head -2
+curl -I "https://raw.githubusercontent.com/nadr00j/desfollow/main/dist/favicon.ico" | head -2
+
+echo ""
 echo "🎉 Processo finalizado!"
+echo "📂 Imagens baixadas do GitHub: https://github.com/nadr00j/desfollow/tree/main/dist/lovable-uploads"
+echo "🔗 Se alguma imagem não baixou, verifique se existe no repositório GitHub"
