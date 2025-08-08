@@ -273,17 +273,11 @@ const Results = () => {
   };
 
   // ✅ MOSTRAR VALORES REAIS (sem multiplicação falsa)
-  const rawCount = scanData?.count || 0;
-  // ❌ REMOVER DADOS SIMULADOS: Usar apenas dados reais
   const totalGhosts = scanData?.count || 0;
   const realGhostsCount = scanData?.real_ghosts_count || 0;
   const famousGhostsCount = scanData?.famous_ghosts_count || 0;
-  const followersCount = scanData?.followers_count || 0;  // Dados analisados
-  const followingCount = scanData?.following_count || 0;  // Dados analisados
   const profileFollowersCount = scanData?.profile_followers_count || scanData?.profile_info?.followers_count || 0;  // Total do perfil
   const profileFollowingCount = scanData?.profile_following_count || scanData?.profile_info?.following_count || 0;  // Total do perfil
-  const lossRate = profileFollowersCount ? 
-    Math.round((totalGhosts / profileFollowersCount) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 p-4">
@@ -334,47 +328,7 @@ const Results = () => {
 
 
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-red-500/20 to-red-600/20 backdrop-blur-xl rounded-2xl p-6 border border-red-500/30 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-red-500/20 rounded-xl">
-                <TrendingDown className="w-8 h-8 text-red-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-red-400">{totalGhosts}</div>
-                <div className="text-white/90 text-sm font-medium">Parasitas</div>
-              </div>
-            </div>
-            <p className="text-white/70 text-sm">Pessoas que não retribuem o follow</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-2xl p-6 border border-yellow-500/30 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-yellow-500/20 rounded-xl">
-                <AlertTriangle className="w-8 h-8 text-yellow-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-yellow-400">{lossRate}%</div>
-                <div className="text-white/90 text-sm font-medium">Taxa de Loss</div>
-              </div>
-            </div>
-            <p className="text-white/70 text-sm">Porcentagem de não-retribuição</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-blue-500/20 rounded-xl">
-                <Users className="w-8 h-8 text-blue-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-blue-400">{followersCount}</div>
-                <div className="text-white/90 text-sm font-medium">Analisados</div>
-              </div>
-            </div>
-            <p className="text-white/70 text-sm">Total de perfis verificados</p>
-          </div>
-        </div>
+        {/* Stats Cards removidos conforme solicitação */}
 
         {/* Results Section */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
@@ -385,9 +339,7 @@ const Results = () => {
                 <h3 className="text-2xl font-bold text-white mb-2">Parasitas Identificados</h3>
                 <p className="text-white/70">Perfis que não retribuem o follow</p>
               </div>
-              <div className="bg-red-500/20 rounded-xl px-4 py-2 border border-red-500/30">
-                <span className="text-red-400 font-bold">{totalGhosts} encontrados</span>
-              </div>
+              {/* Badge de quantidade removido conforme solicitação */}
             </div>
           </div>
 

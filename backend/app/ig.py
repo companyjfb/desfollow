@@ -455,7 +455,7 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
-    max_pages = 20  # Limite de 20 páginas por função
+    max_pages = 40  # Limite aumentado para 40 páginas por função
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
@@ -577,9 +577,9 @@ async def get_followers_with_new_api(user_id: str, db_session = None) -> List[Di
                 print(f"🔗 [FOLLOWERS-V2] Próxima página disponível: {pagination_token[:50]}...")
                 page += 1
             
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
+            # 🚨 Limite de páginas configurado
             if page > max_pages:
-                print(f"⚠️ [FOLLOWERS-V2] LIMITE DE SEGURANÇA: Parando em {max_pages} páginas")
+                print(f"⚠️ [FOLLOWERS-V2] Limite configurado alcançado: Parando em {max_pages} páginas")
                 break
                 
         except Exception as e:
@@ -620,7 +620,7 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
     pagination_token = None
     page = 1
     total_new_users = 0
-    max_pages = 20  # Limite de 20 páginas por função
+    max_pages = 40  # Limite aumentado para 40 páginas por função
     
     headers = {
         'x-rapidapi-host': API_2_HOST,
@@ -742,9 +742,9 @@ async def get_following_with_new_api(user_id: str, db_session = None) -> List[Di
                 print(f"🔗 [FOLLOWING-V2] Próxima página disponível: {pagination_token[:50]}...")
                 page += 1
             
-            # 🚨 LIMITE DE SEGURANÇA: Máximo 50 páginas para evitar loops infinitos
+            # 🚨 Limite de páginas configurado
             if page > max_pages:
-                print(f"⚠️ [FOLLOWING-V2] LIMITE DE SEGURANÇA: Parando em {max_pages} páginas")
+                print(f"⚠️ [FOLLOWING-V2] Limite configurado alcançado: Parando em {max_pages} páginas")
                 break
                 
         except Exception as e:
@@ -781,11 +781,11 @@ async def get_followers_optimized(user_id: str, db_session = None) -> List[Dict]
     Obtém lista de seguidores com paginação correta usando último ID da página anterior.
     """
     print(f"📱 [FOLLOWERS] Iniciando busca de seguidores para user_id: {user_id}")
-    print(f"📱 [FOLLOWERS] Configuração: Máximo 10 páginas, ~25 usuários por página")
+    print(f"📱 [FOLLOWERS] Configuração: Máximo 40 páginas, ~25 usuários por página")
     
     all_followers = []
     page = 1
-    max_pages = 10  # Aumentado para 10 páginas com paginação correta
+    max_pages = 40  # Aumentado para 40 páginas com paginação correta
     total_new_users = 0
     max_id = None  # Controle de paginação real
     
@@ -937,11 +937,11 @@ async def get_following_optimized(user_id: str, db_session = None) -> List[Dict]
     Obtém lista de seguindo com paginação correta usando último ID da página anterior.
     """
     print(f"👥 [FOLLOWING] Iniciando busca de seguindo para user_id: {user_id}")
-    print(f"👥 [FOLLOWING] Configuração: Máximo 10 páginas, ~25 usuários por página")
+    print(f"👥 [FOLLOWING] Configuração: Máximo 40 páginas, ~25 usuários por página")
     
     all_following = []
     page = 1
-    max_pages = 10  # Aumentado para 10 páginas com paginação correta
+    max_pages = 40  # Aumentado para 40 páginas com paginação correta
     total_new_users = 0
     max_id = None  # Controle de paginação real
     
