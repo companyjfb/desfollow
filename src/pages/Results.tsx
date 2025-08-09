@@ -571,7 +571,7 @@ const Results = () => {
                 <p className="text-yellow-400 font-semibold text-sm mb-2">
                   {hasFullAccess ? 
                     `📊 Página ${currentPage} de ${totalPages} - Mostrando ${visibleProfiles.length} de ${allProfiles.length} perfis` :
-                    "🔒 Conteúdo Bloqueado - Apenas 5 de " + allProfiles.length + " perfis visíveis"
+                    "🔒 Conteúdo Bloqueado"
                   }
                 </p>
                 {!hasFullAccess && (
@@ -589,13 +589,13 @@ const Results = () => {
                   <Crown className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-3">Desbloqueie a Lista Completa</h3>
-                <p className="text-white/90 text-xl mb-2">Veja todos os {totalGhosts} perfis que não te seguem de volta</p>
+                <p className="text-white/90 text-xl mb-2">Veja a lista completa de perfis que não te seguem de volta</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
-                  <div className="text-4xl font-bold text-yellow-400 mb-2">{totalGhosts}</div>
-                  <div className="text-white text-base font-medium">Parasitas</div>
+                  <div className="text-2xl font-bold text-yellow-400 mb-2">Lista completa</div>
+                  <div className="text-white text-base font-medium">Sem limite</div>
                 </div>
                 <div className="bg-blue-600/30 backdrop-blur-md rounded-2xl p-6 border border-blue-400/30 shadow-lg">
                   <div className="text-4xl font-bold text-yellow-400 mb-2">100%</div>

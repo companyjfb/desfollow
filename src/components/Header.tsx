@@ -99,7 +99,7 @@ const Header = () => {
               <div className="text-white/80 text-xs">Contas analisadas</div>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-              <div className="text-lg font-bold text-white mb-1">30s</div>
+              <div className="text-lg font-bold text-white mb-1">3min</div>
               <div className="text-white/80 text-xs">Tempo médio</div>
             </div>
           </div>

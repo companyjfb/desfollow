@@ -32,7 +32,7 @@ const Comparison = () => {
     {
       icon: Zap,
       title: "Resultado instantâneo",
-      description: "Análise completa em apenas 30 segundos",
+      description: "Análise completa em cerca de 3 minutos",
       color: "text-green-400"
     },
     {
@@ -130,7 +130,7 @@ const Comparison = () => {
 
               <div className="mt-6 md:mt-8 bg-green-500/10 rounded-xl p-4 md:p-6 border border-green-500/20">
                 <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">30 segundos</div>
+                  <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">3 minutos</div>
                   <div className="text-white/80 text-sm md:text-base">Tempo médio gasto</div>
                 </div>
               </div>
@@ -144,7 +144,7 @@ const Comparison = () => {
                 Pare de perder tempo!
               </h3>
               <p className="text-white/90 mb-4 md:mb-6 text-sm md:text-base">
-                Descubra em 30 segundos o que levaria um dia inteiro para fazer manualmente
+                Descubra em 3 minutos o que levaria um dia inteiro para fazer manualmente
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
