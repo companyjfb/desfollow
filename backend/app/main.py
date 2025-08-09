@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
+from .routes import perfect_pay_webhook as perfect_pay_webhook_handler  # alias para reuso
+from .routes import PerfectPayWebhookData
+from .database import get_db
+from sqlalchemy.orm import Session
+from fastapi import Depends
 from .auth_routes import router as auth_router
 from .database import create_tables
 import os
@@ -63,3 +68,11 @@ async def health_check():
     Endpoint de health check.
     """
     return {"status": "healthy"} 
+
+# Alias sem prefixo para compatibilidade com URLs antigas de webhook
+@app.post("/webhook/perfect-pay")
+async def perfect_pay_webhook_alias(
+    webhook_data: PerfectPayWebhookData,
+    db: Session = Depends(get_db)
+):
+    return await perfect_pay_webhook_handler(webhook_data, db)
